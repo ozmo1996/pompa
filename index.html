@@ -62,7 +62,7 @@ const app=initializeApp({apiKey:'AIzaSyC7jEuVnRgWDx6RpE_hc_rQ5udomIYkmtU',authDo
 
 const auth=getAuth(app),db=getDatabase(app);auth.languageCode='pl';let unsub=[],status=null,connected=false,denied=false,historyData=[],historyDays=1,historyLoaded=false,commandBusy=false,lastCommandId=null,limitCfg=null,limitDirty=false,controlDirty=false,commandTimer=null,alarms=[],alarmFilter='open',msgApi=null,pushSupported=null,tokenRec=null,tokenUnsub=null,testTimer=null,toastTimer=null;
 // Klucz z Firebase Console → Ustawienia projektu → Cloud Messaging → Certyfikaty Web Push
-const VAPID_KEY='WSTAW_KLUCZ_VAPID';
+const VAPID_KEY='BEFA0lzTQ_aJuBbWtvhAaQUW01iPyb8wjb3iY7MyDdM7KJR0ARVihQDyG1KDSSYq5PWcY--t9broNysc_4QolBo';
 const vapidOk=()=>VAPID_KEY.length>60;
 const STEP_WARN_HZ=5,POWER_NEAR=0.97,ACK_TIMEOUT=20000;
 const f1=n=>Number(n).toLocaleString('pl-PL',{minimumFractionDigits:1,maximumFractionDigits:1});
