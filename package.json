@@ -1,0 +1,18 @@
+{
+  "name": "pompa",
+  "private": true,
+  "type": "module",
+  "description": "Mobilny panel pompy (PWA + Firebase). Aplikacja nie wymaga budowania — package.json służy tylko do testów.",
+  "scripts": {
+    "test": "node --test test/logic.test.js",
+    "test:e2e": "node --test --test-timeout=60000 test/e2e.test.js",
+    "test:all": "node --test --test-timeout=60000 test/logic.test.js test/e2e.test.js",
+    "format": "prettier --write \"js/*.js\" \"test/**/*.js\" config.js firebase-messaging-sw.js index.html styles.css",
+    "lint": "eslint . && prettier --check \"js/*.js\" \"test/**/*.js\" config.js firebase-messaging-sw.js"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1",
+    "prettier": "3.8.1",
+    "eslint": "10.1.0"
+  }
+}
