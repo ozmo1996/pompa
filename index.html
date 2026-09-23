@@ -153,11 +153,11 @@ async function weatherHeartbeat(){
 function startWeatherHeartbeat(){
   if(weatherHeartbeatTimer)clearInterval(weatherHeartbeatTimer);
   weatherHeartbeatTimer=null;
-  if(!auth.currentUser||document.visibilityState!=='visible')return;
+  if(!auth.currentUser)return;
   weatherHeartbeat();
   weatherHeartbeatTimer=setInterval(weatherHeartbeat,15000);
 }
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')startWeatherHeartbeat();else{if(weatherHeartbeatTimer)clearInterval(weatherHeartbeatTimer);weatherHeartbeatTimer=null;}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')startWeatherHeartbeat();});
 
 // ---------- wykresy parametrów z zakładki Czujniki (ostatnie 6 h) ----------
 const PC_WIN=6*3600e3,PC_GAP=5*60e3,numv=v=>typeof v==='number'&&Number.isFinite(v);
