@@ -80,7 +80,7 @@ function renderWater() {
     ? "Prąd sondy: " + fmt(s.poziomWodyMa, " mA")
     : "Prąd sondy: brak danych";
   $("waterFill").style.width = pct + "%";
-  $("tankWater").style.transform = `scale(${Math.sqrt(pct / 100)})`;
+  $("tankWater").style.height = pct + "%";
   if (isNum(water)) $("waterBar").setAttribute("aria-valuenow", String(water));
   else $("waterBar").removeAttribute("aria-valuenow");
   const tw = s?.temperaturaWody,

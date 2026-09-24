@@ -349,37 +349,71 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: min(45%, 240px);
-  min-width: 140px;
+  flex: 0 0 154px;
 }
-.tank-map {
-  display: block;
-  width: 100%;
-  height: auto;
-  filter: drop-shadow(0 10px 13px rgba(0, 0, 0, 0.25));
+.tank-gauge {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  height: 172px;
 }
-.tank-water-map {
-  transform-box: fill-box;
-  transform-origin: center;
-  transform: scale(0);
-  transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+.tank-vessel {
+  position: relative;
+  width: 94px;
+  overflow: hidden;
+  border: 3px solid #9abcae;
+  border-radius: 18px 18px 24px 24px;
+  background: #0b262c;
+  box-shadow:
+    inset 0 0 20px rgba(2, 10, 15, 0.65),
+    0 12px 20px rgba(0, 0, 0, 0.2);
 }
-.tank-contour {
-  fill: none;
-  stroke: #8fa5a3;
-  stroke-width: 2;
-  opacity: 0.45;
+.tank-water {
+  position: absolute;
+  inset: auto 0 0;
+  height: 0;
+  background: linear-gradient(150deg, #6cd9ee, #188bae 65%, #126182);
+  transition: height 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.tank-shore {
-  fill: none;
-  stroke: #d2c79e;
-  stroke-width: 2;
-  opacity: 0.8;
+.tank-water::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: -5%;
+  width: 110%;
+  height: 10px;
+  border-radius: 50%;
+  background: #b9f2f4;
+  box-shadow: 0 2px 8px rgba(185, 242, 244, 0.6);
+}
+.tank-glass {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(100deg, rgba(255, 255, 255, 0.18), transparent 30%, transparent 72%, rgba(0, 0, 0, 0.18));
+}
+.tank-ticks {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1px 0;
+  color: #d1e3dc;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tank-ticks span::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  margin-right: 5px;
+  border-top: 1px solid #8faea3;
+  vertical-align: middle;
 }
 .tank-caption {
-  margin-top: -6px;
+  margin-top: 8px;
   color: #b8d2c5;
-  font-size: 10px;
+  font-size: 11px;
   text-align: center;
 }
 .value {
@@ -591,7 +625,7 @@ summary {
     font-size: 44px;
   }
   .tank-stage {
-    min-width: 130px;
+    flex-basis: 140px;
   }
   .stats-grid {
     grid-template-columns: 1fr 1fr;
@@ -1850,7 +1884,17 @@ header {
     font-size: 46px;
   }
   .tank-stage {
-    min-width: 110px;
+    flex-basis: 126px;
+  }
+  .tank-gauge {
+    height: 148px;
+    gap: 8px;
+  }
+  .tank-vessel {
+    width: 72px;
+  }
+  .tank-ticks {
+    font-size: 10px;
   }
   .water .temp {
     display: flex;
