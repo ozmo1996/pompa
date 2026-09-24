@@ -67,6 +67,25 @@ function renderDrive(live) {
         : "Aktualne odczyty z falownika.";
 }
 
+function renderND20() {
+  const d = S.status?.nd20;
+  const fresh = d?.polaczony === true && isFresh(Number(d.aktualizacja), now(), 15000);
+  $("nd20State").textContent = !d
+    ? "Oczekiwanie na podłączenie i uruchomienie miernika"
+    : fresh
+      ? "Odczyt aktualny · " + new Date(d.aktualizacja).toLocaleTimeString("pl-PL")
+      : "Brak aktualnego odczytu ND20";
+  const show = (id, value, unit) => ($(id).textContent = fmt(fresh ? value : null, unit));
+  show("nd20Power", d?.mocKw, " kW");
+  show("nd20Hz", d?.czestotliwoscHz, " Hz");
+  show("nd20U12", d?.napiecieL1L2, " V");
+  show("nd20U23", d?.napiecieL2L3, " V");
+  show("nd20U31", d?.napiecieL3L1, " V");
+  show("nd20I1", d?.pradL1, " A");
+  show("nd20I2", d?.pradL2, " A");
+  show("nd20I3", d?.pradL3, " A");
+}
+
 function renderWater() {
   const s = S.status,
     water = s?.poziomWodyProc,
@@ -119,6 +138,7 @@ function renderWeather() {
 export function renderSensors(live) {
   renderHeader();
   renderDrive(live);
+  renderND20();
   renderWater();
   renderWeather();
 }

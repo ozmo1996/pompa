@@ -11,4 +11,11 @@ export default [
     languageOptions: { ecmaVersion: "latest", sourceType: "module", globals: browser },
     rules: { "no-unused-vars": ["error", { caughtErrors: "none" }], "no-undef": "error" },
   },
+  {
+    files: ["raspberry/*.js"],
+    languageOptions: {
+      sourceType: "commonjs",
+      globals: { ...browser, require: "readonly", module: "readonly", Buffer: "readonly" },
+    },
+  },
 ];

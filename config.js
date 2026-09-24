@@ -1,7 +1,7 @@
 // Jedno źródło konfiguracji dla aplikacji (import w modułach JS) i service workera (importScripts).
 // Plik celowo nie używa import/export, żeby działał w obu kontekstach.
 globalThis.POMPA_CONFIG = Object.freeze({
-  wersja: "2.16",
+  wersja: "2.17",
 
   // Przyblizenie misy jako scietego stozka o eliptycznych, podobnych przekrojach.
   zbiornik: Object.freeze({ wysokoscCm: 250, dnoM2: 470, koronaM2: 805 }),

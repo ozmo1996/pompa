@@ -71,6 +71,27 @@ test("pracująca pompa: wszystkie zakładki działają bez błędów", async () 
   await ctx.close();
 });
 
+test("ND20: brak miernika i świeży odczyt są wyraźnie rozróżnione", async () => {
+  const data = seedData(Date.now());
+  const { page, ctx } = await open({ data });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  assert.match(await page.textContent("#nd20State"), /Oczekiwanie na podłączenie/);
+  assert.equal(await page.textContent("#nd20Power"), "— kW");
+  await page.evaluate(() =>
+    globalThis.__fb.set("pompa/status/nd20", {
+      polaczony: true,
+      aktualizacja: Date.now(),
+      mocKw: 74.25,
+      czestotliwoscHz: 50,
+      napiecieL1L2: 400,
+      pradL1: 125,
+    }),
+  );
+  await page.waitForFunction(() => document.getElementById("nd20Power").textContent.includes("74,3"));
+  assert.equal(await page.textContent("#nd20Hz"), "50 Hz");
+  await ctx.close();
+});
+
 test("notatka z terminem zapisuje się w bazie i można ją oznaczyć jako wykonaną; poziom pokazuje cm", async () => {
   const { page, ctx, errors } = await open();
   await page.waitForSelector("#dashboard:not([hidden])");
