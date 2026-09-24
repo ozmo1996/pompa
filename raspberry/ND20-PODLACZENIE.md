@@ -40,7 +40,8 @@ Jeśli agregat jest **3-przewodowy, bez N** albo ma inne napięcie (np. 3 × 400
 1. Elektryk potwierdza tabliczki ND20, agregatu i CT oraz pomiary przed załączeniem.
 2. Na ND20 ustawia właściwy układ 3Ph/4W albo 3Ph/3W, zakres napięcia, przekładnie CT/VT oraz 9600, 8N2, adres 1.
 3. W `/home/pi/pompa/config.json` zmienić tylko `nd20.wlaczony` na `true` po montażu.
-4. Uruchomić `sudo systemctl enable --now pompa-nd20`; sprawdzić `systemctl status pompa-nd20` oraz `journalctl -u pompa-nd20 -n 30`.
-5. Porównać U, I, Hz, kW i kierunek przepływu mocy z wyświetlaczem ND20. Dane pojawiają się pod `pompa/status/nd20`; nie sterują pompą ani limitem mocy.
+4. Jednorazowo zainstalować wgrany już plik usługi: `sudo install -m 644 /home/pi/pompa/pompa-nd20.service /etc/systemd/system/pompa-nd20.service` i `sudo systemctl daemon-reload`. Usługa nie jest włączona automatycznie podczas przygotowania.
+5. Uruchomić `sudo systemctl enable --now pompa-nd20`; sprawdzić `systemctl status pompa-nd20` oraz `journalctl -u pompa-nd20 -n 30`.
+6. Porównać U, I, Hz, kW i kierunek przepływu mocy z wyświetlaczem ND20. Dane pojawiają się pod `pompa/status/nd20`; nie sterują pompą ani limitem mocy.
 
 Przygotowany sterownik używa wyłącznie funkcji Modbus 03 (odczyt). Nie zapisuje nastaw miernika. Do uruchomienia produkcyjnego konieczne są wyniki porównania z wyświetlaczem ND20.
