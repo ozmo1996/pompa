@@ -1,9 +1,10 @@
 // Jedno źródło konfiguracji dla aplikacji (import w modułach JS) i service workera (importScripts).
 // Plik celowo nie używa import/export, żeby działał w obu kontekstach.
 globalThis.POMPA_CONFIG = Object.freeze({
-  wersja: "2.13",
+  wersja: "2.14",
 
-  zbiornik: Object.freeze({ wysokoscCm: 250 }), // zakres sondy 0–2,5 m; do kalibracji po montazu
+  // Przyblizenie misy jako scietego stozka o eliptycznych, podobnych przekrojach.
+  zbiornik: Object.freeze({ wysokoscCm: 250, dnoM2: 470, koronaM2: 805 }),
 
   // Wersja Firebase JS SDK — zmieniaj tylko tutaj.
   firebaseSdk: "12.2.1",

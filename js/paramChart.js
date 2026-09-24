@@ -1,5 +1,5 @@
 // Okno z wykresem pojedynczego parametru z zakładki „Czujniki” (ostatnie 6 godzin).
-import { CFG, fmt, isFresh, isNum, niceStep, powerReading, rowPower, wetBulb } from "./logic.js";
+import { CFG, fmt, isFresh, isNum, niceStep, powerReading, rowPower, waterVolumeM3, wetBulb } from "./logic.js";
 import { weatherHistory, workHistory } from "./history.js";
 import { $, S, isLive, now, safe, user } from "./state.js";
 
@@ -96,8 +96,8 @@ const PARAMS = {
     u: " m³",
     d: 1,
     pole: "m3",
-    get: (r) => r.m3,
-    now: (s) => s?.poziomWodyM3,
+    get: (r) => waterVolumeM3(r.poziom),
+    now: (s) => waterVolumeM3(s?.poziomWodyProc),
     lo: 0,
   },
   mA: {

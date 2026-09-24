@@ -10,6 +10,8 @@ import {
   weatherTime,
   wetBulb,
   windDirection,
+  waterVolumeM3,
+  tankCapacityM3,
 } from "./logic.js";
 import { $, S, isLive, now } from "./state.js";
 
@@ -71,7 +73,9 @@ function renderWater() {
     pct = isNum(water) ? clamp(water, 0, 100) : 0;
   $("water").textContent = fmt(water);
   $("waterCm").textContent = isNum(water) ? fmt((pct * CFG.zbiornik.wysokoscCm) / 100, " cm", 1) : "— cm";
-  $("volume").textContent = isNum(s?.poziomWodyM3) ? fmt(s.poziomWodyM3, " m³") : "Brak odczytu z czujnika";
+  const volume = waterVolumeM3(water);
+  $("volume").textContent = volume === null ? "Brak odczytu z czujnika" : "≈ " + fmt(volume, " m³", 0) + " wody";
+  $("tankCapacity").textContent = "Szacowana pojemność: ≈ " + fmt(tankCapacityM3(), " m³", 0);
   $("sensorCurrent").textContent = isNum(s?.poziomWodyMa)
     ? "Prąd sondy: " + fmt(s.poziomWodyMa, " mA")
     : "Prąd sondy: brak danych";

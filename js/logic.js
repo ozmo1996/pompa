@@ -20,6 +20,18 @@ export const fmt = (v, suffix = "", digits = 1) =>
 export const f1 = (n) => Number(n).toLocaleString("pl-PL", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 export const signed1 = (d) => (d > 0 ? "+" : "") + f1(d);
 
+/** Objętość owalnej misy; osie elipsy zwiększają się liniowo od dna do korony. */
+export function waterVolumeM3(levelPercent) {
+  if (!isNum(levelPercent)) return null;
+  const { wysokoscCm, dnoM2, koronaM2 } = CFG.zbiornik;
+  const x = clamp(levelPercent / 100, 0, 1);
+  const bottom = Math.sqrt(dnoM2),
+    delta = Math.sqrt(koronaM2) - bottom;
+  return (wysokoscCm / 100) * (dnoM2 * x + bottom * delta * x ** 2 + (delta ** 2 * x ** 3) / 3);
+}
+
+export const tankCapacityM3 = () => waterVolumeM3(100);
+
 /** Czy znacznik czasu jest świeży. Toleruje niewielkie przesunięcie zegara „w przyszłość”. */
 export const isFresh = (t, now, maxAge = P.swiezoscStatusuMs) =>
   isNum(t) && t > 0 && now - t >= -P.tolerancjaPrzyszlosciMs && now - t < maxAge;

@@ -350,19 +350,34 @@ button:focus-visible {
   flex-direction: column;
   align-items: center;
   min-width: 120px;
+  position: relative;
+  padding-top: 12px;
 }
 .tank-shell {
   position: relative;
-  width: 106px;
-  height: 154px;
-  border: 5px solid #8ba59a;
-  border-top-width: 8px;
-  border-radius: 18px 18px 27px 27px;
+  width: 112px;
+  height: 160px;
+  border: 3px solid #9ab8a8;
+  border-top: 0;
+  border-radius: 0 0 26px 26px;
+  clip-path: polygon(0 0, 100% 0, 84% 100%, 16% 100%);
   overflow: hidden;
-  background: #0a1b17;
+  background: linear-gradient(120deg, #112f32, #0a1b17);
   box-shadow:
     inset 0 0 0 3px rgba(255, 255, 255, 0.04),
     0 12px 25px rgba(0, 0, 0, 0.25);
+}
+.tank-rim {
+  position: absolute;
+  top: 3px;
+  z-index: 2;
+  width: 116px;
+  height: 24px;
+  border: 3px solid #a9c6b4;
+  border-radius: 50%;
+  background: rgba(12, 37, 37, 0.9);
+  box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
 }
 .tank-water {
   position: absolute;
@@ -370,7 +385,7 @@ button:focus-visible {
   right: 0;
   bottom: 0;
   height: 0;
-  background: linear-gradient(#60d8f3, #1685ad);
+  background: linear-gradient(150deg, #71dcf0, #1685ad 65%, #0a5279);
   transition: height 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .tank-water:before {
@@ -391,6 +406,12 @@ button:focus-visible {
   margin-top: 7px;
   font-size: 10px;
   color: var(--muted);
+}
+.tank-caption {
+  margin-top: 5px;
+  color: #b8d2c5;
+  font-size: 10px;
+  text-align: center;
 }
 .value {
   font-size: 48px;
@@ -1879,6 +1900,10 @@ header {
   .tank-shell {
     width: 82px;
     height: 134px;
+  }
+  .tank-rim {
+    width: 86px;
+    height: 20px;
   }
   .tank-scale {
     width: 82px;

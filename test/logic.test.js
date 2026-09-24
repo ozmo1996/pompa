@@ -25,7 +25,17 @@ import {
   validateLimit,
   wetBulb,
   windDirection,
+  waterVolumeM3,
+  tankCapacityM3,
 } from "../js/logic.js";
+
+test("objętość owalnego zbiornika jest nieliniowa", () => {
+  assert.equal(waterVolumeM3(null), null);
+  assert.equal(waterVolumeM3(0), 0);
+  assert.ok(Math.abs(tankCapacityM3() - 1575.1) < 0.1);
+  assert.ok(Math.abs(waterVolumeM3(50) - 682.9) < 0.2);
+  assert.equal(waterVolumeM3(100), waterVolumeM3(120));
+});
 
 const running = { polaczony: true, pracuje: true, czestotliwoscWyjsciowa: 40, czestotliwoscZadana: 40, moc: 60 };
 

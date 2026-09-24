@@ -1,5 +1,5 @@
 // Zakładka „Statystyki”: historia poziomu i pracy, cykle zbiornika, ostatnie próbki.
-import { cyclesFrom, duration, fmt, isNum } from "./logic.js";
+import { cyclesFrom, duration, fmt, isNum, waterVolumeM3 } from "./logic.js";
 import { workHistory } from "./history.js";
 import { $, el, now, onShowView, user } from "./state.js";
 
@@ -124,7 +124,7 @@ export function renderStats() {
               td(when(x.czas)),
               td(fmt(x.poziom, " %")),
               td(fmt(x.mA, " mA")),
-              td(fmt(x.m3, " m³")),
+              td(fmt(waterVolumeM3(x.poziom), " m³", 0)),
               td(fmt(x.temperaturaWody, " °C")),
               td(x.falownikPolaczony ? (x.pracuje ? "Pracuje" : "Stop") : "Offline"),
               td(fmt(x.hz, " Hz")),
