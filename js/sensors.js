@@ -70,6 +70,7 @@ function renderWater() {
     water = s?.poziomWodyProc,
     pct = isNum(water) ? clamp(water, 0, 100) : 0;
   $("water").textContent = fmt(water);
+  $("waterCm").textContent = isNum(water) ? fmt((pct * CFG.zbiornik.wysokoscCm) / 100, " cm", 1) : "— cm";
   $("volume").textContent = isNum(s?.poziomWodyM3) ? fmt(s.poziomWodyM3, " m³") : "Brak odczytu z czujnika";
   $("sensorCurrent").textContent = isNum(s?.poziomWodyMa)
     ? "Prąd sondy: " + fmt(s.poziomWodyMa, " mA")

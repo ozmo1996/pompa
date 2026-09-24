@@ -33,6 +33,7 @@ const SHELL = [
   "js/alarms.js",
   "js/push.js",
   "js/heartbeat.js",
+  "js/notes.js",
 ];
 
 self.addEventListener("install", (event) => {

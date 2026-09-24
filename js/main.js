@@ -18,6 +18,7 @@ import {
   watchToken,
 } from "./push.js";
 import { initHeartbeat, setWeatherActiveUntil, startHeartbeat } from "./heartbeat.js";
+import { initNotes, notesDenied, resetNotes, setNotes } from "./notes.js";
 
 const SDK = (name) => `https://www.gstatic.com/firebasejs/${CFG.firebaseSdk}/firebase-${name}.js`;
 
@@ -63,6 +64,7 @@ function onUser(u) {
   resetControl();
   resetHistory();
   resetStats();
+  resetNotes();
   closeParamChart();
   stopPush();
   renderAlarms();
@@ -111,6 +113,7 @@ function onUser(u) {
   subscribe("pompa/ustawienia/pogoda/aktywnaDo", (s) => setWeatherActiveUntil(s.val()));
   subscribe("pompa/polecenie", (s) => onCommandUpdate(s.val()));
   subscribe(q("pompa/alarmy", 300), setAlarms, alarmsDenied);
+  subscribe("pompa/notatki", setNotes, notesDenied);
   subscribe(q("pompa/zdarzenia", 20), renderEvents, () =>
     $("events").replaceChildren(el("li", { textContent: "Brak dostępu do historii zdarzeń." })),
   );
@@ -180,6 +183,7 @@ async function boot() {
   for (const v of VIEWS) $(v + "Tab").addEventListener("click", () => showView(v));
   initControl();
   initStats();
+  initNotes();
   initParamChart();
   initAlarms();
   initPush();

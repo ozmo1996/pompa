@@ -25,6 +25,7 @@ Telefon (PWA) ⇄ Firebase Realtime Database ⇄ Raspberry Pi ⇄ falownik · so
 | `js/paramChart.js` | Wykres 6 h po dotknięciu parametru |
 | `js/alarms.js`, `js/push.js` | Alarmy i powiadomienia push |
 | `js/heartbeat.js` | „Puls pogody” — częstsze pobieranie pogody, gdy aplikacja jest otwarta |
+| `js/notes.js` | Notatki i zadania z opcjonalnym terminem, wspólne dla zalogowanych urządzeń |
 | `firebase-messaging-sw.js` | Service worker: powiadomienia w tle i praca bez sieci |
 | `test/` | Testy logiki (`node --test`) i scenariusze w przeglądarce z atrapą Firebase |
 
@@ -73,6 +74,10 @@ kolejkuje zapisy wykonane bez zasięgu i może je dostarczyć dopiero po odzyska
 pozwala nie wykonać spóźnionego „Start”.
 
 Reguły bezpieczeństwa bazy (`database.rules.json`) nie są częścią tego repozytorium.
+Regułę dla `pompa/notatki` instaluje `scripts/deploy-notes-rules.cjs`, zachowując pozostałe reguły.
+Notatki zapisują: temat, opis, opcjonalny termin, autora i stan wykonania. Termin jest wyróżniany
+w aplikacji po upływie; nie wysyła powiadomienia w tle. Wysokość wody w centymetrach jest liczona
+z procentów przy zakresie 250 cm ustawionym w `config.js`; wynik wymaga końcowej kalibracji sondy.
 
 ## Testy
 

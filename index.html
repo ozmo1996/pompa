@@ -122,6 +122,8 @@
             Sterowanie</button
           ><button class="tab" id="statsTab" type="button" aria-controls="statsView" aria-pressed="false">
             Statystyki</button
+          ><button class="tab" id="notesTab" type="button" aria-controls="notesView" aria-pressed="false">
+            Notatki<span id="notesBadge" class="tab-badge" hidden></span></button
           ><button class="tab" id="alarmsTab" type="button" aria-controls="alarmsView" aria-pressed="false">
             Alarmy<span id="alarmBadge" class="tab-badge" hidden></span>
           </button>
@@ -167,6 +169,7 @@
               <div class="water-main">
                 <div>
                   <div class="value" data-param="poziom"><span id="water">—</span> <span class="unit">%</span></div>
+                  <p class="water-height"><b id="waterCm">— cm</b><small>Wysokość słupa wody (orientacyjnie)</small></p>
                   <p id="volume" class="small" data-param="m3">Brak odczytu z czujnika</p>
                   <p id="sensorCurrent" class="small" data-param="mA">Prąd sondy: — mA</p>
                   <div id="waterTempBox" class="temp" data-param="tWody">
@@ -476,6 +479,51 @@
             <ul class="events" id="events">
               <li>Brak zapisanych zdarzeń.</li>
             </ul>
+          </details>
+        </section>
+        <section id="notesView" hidden>
+          <div class="section-heading">
+            <h2>Notatki i zadania</h2>
+            <p>Zapisane w chmurze, dostępne na każdym zalogowanym urządzeniu. Termin jest opcjonalny.</p>
+          </div>
+          <form id="noteForm" class="card note-form">
+            <h3 id="noteFormTitle">Nowa notatka</h3>
+            <label for="noteTitle">Temat</label>
+            <input id="noteTitle" maxlength="120" required placeholder="Np. Wymienić dyszę w armacie nr 2" />
+            <label for="noteBody">Szczegóły</label>
+            <textarea id="noteBody" maxlength="2000" rows="3" placeholder="Co trzeba zrobić?"></textarea>
+            <div class="note-date-fields">
+              <div>
+                <label for="noteHours">Przypomnij za (godz.)</label
+                ><input
+                  id="noteHours"
+                  type="number"
+                  min="0.1"
+                  max="8760"
+                  step="0.1"
+                  inputmode="decimal"
+                  placeholder="Np. 3"
+                />
+              </div>
+              <div><label for="noteDue">Albo wybierz termin</label><input id="noteDue" type="datetime-local" /></div>
+            </div>
+            <p class="small">
+              Termin będzie wyróżniony w aplikacji, gdy nadejdzie. Ta zakładka nie wysyła powiadomień w tle.
+            </p>
+            <div class="note-form-actions">
+              <button id="noteSave" type="submit">Zapisz notatkę</button
+              ><button id="noteCancel" type="button" class="secondary" hidden>Anuluj edycję</button>
+            </div>
+            <p id="noteMessage" class="small" role="status" aria-live="polite"></p>
+          </form>
+          <div class="note-list-head">
+            <h3>Do zrobienia</h3>
+            <span id="noteOpenCount" class="small"></span>
+          </div>
+          <ul id="noteOpenList" class="note-list"></ul>
+          <details class="note-done-panel">
+            <summary>Wykonane (<span id="noteDoneCount">0</span>)</summary>
+            <ul id="noteDoneList" class="note-list"></ul>
           </details>
         </section>
         <section id="alarmsView" hidden>

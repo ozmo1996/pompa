@@ -62,11 +62,31 @@ test("pracująca pompa: wszystkie zakładki działają bez błędów", async () 
   await page.waitForSelector("#dashboard:not([hidden])");
   assert.match(await page.textContent("#connectionText"), /Dane aktualne/);
   assert.equal(await page.textContent("#sensorDriveState"), "Pompa pracuje");
-  for (const tab of ["control", "stats", "alarms", "overview"]) {
+  for (const tab of ["control", "stats", "notes", "alarms", "overview"]) {
     await page.click(`#${tab}Tab`);
     assert.equal(await page.isVisible(`#${tab}View`), true);
   }
   assert.equal(await page.isVisible("#alarmBanner"), true);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("notatka z terminem zapisuje się w bazie i można ją oznaczyć jako wykonaną; poziom pokazuje cm", async () => {
+  const { page, ctx, errors } = await open();
+  await page.waitForSelector("#dashboard:not([hidden])");
+  assert.equal(await page.textContent("#waterCm"), "160,5 cm");
+  await page.click("#notesTab");
+  await page.fill("#noteTitle", "Przestawić armatkę nr 2");
+  await page.fill("#noteBody", "Po 3 godzinach sprawdzić kierunek wiatru.");
+  await page.fill("#noteHours", "3");
+  await page.click("#noteSave");
+  await page.waitForSelector("#noteOpenList .note-item");
+  const created = await page.evaluate(() => Object.entries(globalThis.__fb.store.pompa.notatki)[0]);
+  assert.equal(created[1].tytul, "Przestawić armatkę nr 2");
+  assert.ok(created[1].termin - created[1].utworzono > 2.9 * 3600e3);
+  await page.getByRole("button", { name: "Wykonane" }).click();
+  await page.waitForFunction(() => document.querySelectorAll("#noteDoneList .note-item").length === 1);
+  assert.equal(await page.evaluate(([id]) => globalThis.__fb.store.pompa.notatki[id].wykonane, created), true);
   assert.deepEqual(errors, []);
   await ctx.close();
 });
