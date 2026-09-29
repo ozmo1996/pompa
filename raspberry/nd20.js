@@ -62,13 +62,29 @@ async function main() {
     databaseURL: cfg.firebase.adresBazy,
   });
   const ref = admin.database().ref(`${cfg.firebase.sciezka}/status/nd20`);
+  const { TelemetryHistory } = require("./telemetry-history");
+  const Database = require("better-sqlite3");
+  const history = new TelemetryHistory(
+    new Database("/home/pi/pompa/telemetry.db"),
+    admin.database().ref(`${cfg.firebase.sciezka}/historia`),
+  );
+  let status = null;
+  admin
+    .database()
+    .ref(`${cfg.firebase.sciezka}/status`)
+    .on("value", (s) => {
+      status = s.val();
+    });
   for (;;) {
+    const now = Date.now();
     try {
       if (!client.isOpen) await connect(client, meter);
       const response = await client.readHoldingRegisters(7000, 66);
+      const data = decodeRegisters(response.data);
+      history.meter(data, Date.now());
       await ref.update({
         polaczony: true,
-        ...decodeRegisters(response.data),
+        ...data,
         aktualizacja: Date.now(),
       });
     } catch (error) {
@@ -79,6 +95,12 @@ async function main() {
       } catch {
         /* port mógł nie zostać otwarty */
       }
+    }
+    try {
+      history.water(status, now);
+      await history.flush();
+    } catch (error) {
+      console.error("Historia telemetrii:", error.message);
     }
     await delay(meter.interwalMs || 5000);
   }

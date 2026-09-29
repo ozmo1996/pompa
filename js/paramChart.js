@@ -6,7 +6,7 @@ import { $, S, isLive, now, safe, user } from "./state.js";
 const { silnik: M } = CFG,
   WIN = CFG.historia.oknoWykresuParametruMs,
   GAP = 5 * 60e3, // przerwa w danych dłuższa niż to przerywa linię
-  COLORS = { Falownik: "#d6f48a", Zbiornik: "#4cc9e8", Pogoda: "#a9b8ff" },
+  COLORS = { Falownik: "#d6f48a", Zbiornik: "#4cc9e8", Pogoda: "#a9b8ff", Agregat: "#f0c995" },
   WARN = "#f0c995";
 const pw = (r) => r?.pogoda || {};
 const wb = (w) => wetBulb(w?.temperatura, w?.wilgotnosc);
@@ -16,7 +16,33 @@ const wb = (w) => wetBulb(w?.temperatura, w?.wilgotnosc);
  * get — wartość z rekordu historii, now — wartość z bieżącego statusu, lo/hi — zakres osi, span — minimalna rozpiętość,
  * refs — linie odniesienia.
  */
+const meterParams = Object.fromEntries(
+  [
+    ["nd20Power", "mocKw", "Moc czynna agregatu", " kW"],
+    ["nd20Hz", "czestotliwoscHz", "Częstotliwość agregatu", " Hz"],
+    ["nd20U12", "napiecieL1L2", "Napięcie L1–L2", " V"],
+    ["nd20U23", "napiecieL2L3", "Napięcie L2–L3", " V"],
+    ["nd20U31", "napiecieL3L1", "Napięcie L3–L1", " V"],
+    ["nd20I1", "pradL1", "Prąd L1", " A"],
+    ["nd20I2", "pradL2", "Prąd L2", " A"],
+    ["nd20I3", "pradL3", "Prąd L3", " A"],
+  ].map(([key, field, n, u]) => [
+    key,
+    {
+      g: "Agregat",
+      n,
+      u,
+      d: 1,
+      pole: `nd20.${field}`,
+      get: (r) => r.nd20?.[field],
+      now: (s) => (isFresh(s?.nd20?.aktualizacja, now(), 15000) && s.nd20.polaczony ? s.nd20[field] : null),
+      timestamp: (s) => s?.nd20?.aktualizacja,
+      span: 1,
+    },
+  ]),
+);
 const PARAMS = {
+  ...meterParams,
   hz: {
     g: "Falownik",
     n: "Częstotliwość wyjściowa",
@@ -270,7 +296,7 @@ function points(P) {
     if (isNum(v)) pts.push({ t: r.czas, v });
   }
   // dołóż bieżący odczyt, jeśli jest świeższy niż ostatni zapis w historii
-  const t = Number(S.status?.aktualizacja),
+  const t = Number(P.timestamp ? P.timestamp(S.status) : S.status?.aktualizacja),
     v = P.now(S.status);
   if (isFresh(t, now()) && isNum(v) && (!pts.length || t > pts.at(-1).t + 20000)) pts.push({ t, v, live: true });
   return pts;
@@ -300,7 +326,11 @@ function render() {
         : `${vs.length} ${vs.length === 1 ? "pomiar" : "pomiarów"} · ` +
           (P.g === "Pogoda"
             ? "pogoda: co 10 min na postoju, 5 min w pracy lub 30 s przy otwartej aplikacji."
-            : "praca: podsumowanie co ok. 1 min; pełny zapis 10 s na Raspberry.");
+            : P.g === "Agregat"
+              ? "agregat: zapis co minutę w chmurze, pełne próbki co 10 s na Raspberry."
+              : P.g === "Zbiornik"
+                ? "poziom wody: także co 5 min podczas postoju."
+                : "praca: podsumowanie co ok. 1 min; pełny zapis 10 s na Raspberry.");
   if (pc.hover == null)
     $("pcHover").textContent = vs.length > 1 ? "Przesuń palcem po wykresie, aby odczytać wartość." : "";
   draw();
@@ -410,7 +440,7 @@ function draw() {
     segs = [];
   let cur = [];
   pts.forEach((p, i) => {
-    if (i && p.t - pts[i - 1].t > GAP) {
+    if (i && p.t - pts[i - 1].t > (P.g === "Zbiornik" ? 6 * 60e3 : GAP)) {
       segs.push(cur);
       cur = [];
     }

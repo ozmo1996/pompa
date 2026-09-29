@@ -205,16 +205,29 @@
               <h2>Parametry zasilania</h2>
               <p id="nd20State" class="small">Oczekiwanie na podłączenie miernika</p>
               <div class="weather-metrics">
-                <div class="weather-metric"><b id="nd20Power">— kW</b><small>Moc czynna 3 faz</small></div>
-                <div class="weather-metric"><b id="nd20Hz">— Hz</b><small>Częstotliwość</small></div>
-                <div class="weather-metric"><b id="nd20U12">— V</b><small>Napięcie L1–L2</small></div>
-                <div class="weather-metric"><b id="nd20U23">— V</b><small>Napięcie L2–L3</small></div>
-                <div class="weather-metric"><b id="nd20U31">— V</b><small>Napięcie L3–L1</small></div>
-                <div class="weather-metric"><b id="nd20I1">— A</b><small>Prąd L1</small></div>
-                <div class="weather-metric"><b id="nd20I2">— A</b><small>Prąd L2</small></div>
-                <div class="weather-metric"><b id="nd20I3">— A</b><small>Prąd L3</small></div>
+                <div class="weather-metric" data-param="nd20Power">
+                  <b id="nd20Power">— kW</b><small>Moc czynna 3 faz</small>
+                </div>
+                <div class="weather-metric" data-param="nd20Hz">
+                  <b id="nd20Hz">— Hz</b><small>Częstotliwość</small>
+                </div>
+                <div class="weather-metric" data-param="nd20U12">
+                  <b id="nd20U12">— V</b><small>Napięcie L1–L2</small>
+                </div>
+                <div class="weather-metric" data-param="nd20U23">
+                  <b id="nd20U23">— V</b><small>Napięcie L2–L3</small>
+                </div>
+                <div class="weather-metric" data-param="nd20U31">
+                  <b id="nd20U31">— V</b><small>Napięcie L3–L1</small>
+                </div>
+                <div class="weather-metric" data-param="nd20I1"><b id="nd20I1">— A</b><small>Prąd L1</small></div>
+                <div class="weather-metric" data-param="nd20I2"><b id="nd20I2">— A</b><small>Prąd L2</small></div>
+                <div class="weather-metric" data-param="nd20I3"><b id="nd20I3">— A</b><small>Prąd L3</small></div>
               </div>
-              <p class="small">Odczyt niezależny od falownika; nie steruje pompą.</p>
+              <p class="small">
+                Dotknij parametru, aby zobaczyć wykres z 6 godzin. Historia co minutę; pełne próbki co 10 s na
+                Raspberry. Odczyt nie steruje pompą.
+              </p>
             </article>
 
             <article class="card weather-card">

@@ -89,6 +89,17 @@ test("ND20: brak miernika i świeży odczyt są wyraźnie rozróżnione", async 
   );
   await page.waitForFunction(() => document.getElementById("nd20Power").textContent.includes("74,3"));
   assert.equal(await page.textContent("#nd20Hz"), "50 Hz");
+  await page.evaluate(() =>
+    globalThis.__fb.set("pompa/historia/agregat-test", {
+      czas: Date.now() - 60000,
+      typ: "agregat",
+      nd20: { mocKw: 70 },
+    }),
+  );
+  await page.click('[data-param="nd20Power"]');
+  await page.waitForFunction(() => document.getElementById("pcNote").textContent.includes("agregat: zapis"));
+  assert.equal(await page.textContent("#pcTitle"), "Moc czynna agregatu");
+  assert.match(await page.textContent("#pcMin"), /70/);
   await ctx.close();
 });
 

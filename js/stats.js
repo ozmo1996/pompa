@@ -55,8 +55,8 @@ function drawChart(id, series, maxY) {
     let started = false;
     for (let i = 0; i < rows.length; i += step) {
       const row = rows[i],
-        v = Number(s.get ? s.get(row) : row[s.key]);
-      if (!Number.isFinite(v)) continue;
+        v = s.get ? s.get(row) : row[s.key];
+      if (!isNum(v)) continue;
       const x = pad.l + ((row.czas - first) / Math.max(1, last - first)) * iw,
         y = pad.t + (1 - Math.max(0, Math.min(maxY, v)) / maxY) * ih;
       if (started) c.lineTo(x, y);
@@ -126,7 +126,7 @@ export function renderStats() {
               td(fmt(x.mA, " mA")),
               td(fmt(waterVolumeM3(x.poziom), " m³", 0)),
               td(fmt(x.temperaturaWody, " °C")),
-              td(x.falownikPolaczony ? (x.pracuje ? "Pracuje" : "Stop") : "Offline"),
+              td(x.typ === "woda" ? "Pomiar wody" : x.falownikPolaczony ? (x.pracuje ? "Pracuje" : "Stop") : "Offline"),
               td(fmt(x.hz, " Hz")),
               td(fmt(x.prad, " A")),
               td(fmt(x.napiecie, " V")),
@@ -160,7 +160,7 @@ async function loadStats() {
   try {
     const r = await workHistory.ensure(now() - days * 86400e3);
     if (seq !== loadSeq) return; // w międzyczasie wybrano inny zakres
-    rows = r;
+    rows = r.filter((x) => x.typ !== "agregat");
     renderStats();
   } catch {
     if (seq === loadSeq)

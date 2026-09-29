@@ -44,4 +44,14 @@ Jeśli agregat jest **3-przewodowy, bez N** albo ma inne napięcie (np. 3 × 400
 5. Uruchomić `sudo systemctl enable --now pompa-nd20`; sprawdzić `systemctl status pompa-nd20` oraz `journalctl -u pompa-nd20 -n 30`.
 6. Porównać U, I, Hz, kW i kierunek przepływu mocy z wyświetlaczem ND20. Dane pojawiają się pod `pompa/status/nd20`; nie sterują pompą ani limitem mocy.
 
+## Historia (v2.18)
+
+Proces wymaga `telemetry-history.js` obok `nd20.js` oraz istniejącej zależności `better-sqlite3`.
+W `telemetry.db` zapisuje pełne parametry ND20 co 10 s, niezależnie od pracy falownika.
+Do `pompa/historia` wysyła rekordy `typ: agregat` z obiektem `nd20` co minutę.
+Świeży poziom wody zapisuje także co 5 min na postoju (`typ: woda`).
+Nie zapisuje braku łączności jako pomiaru zerowego. Kolejka SQLite ponawia wysyłkę po przerwie internetu.
+W aplikacji każdy parametr ND20 otwiera wykres 6 godzin. Starszych danych nie da się odtworzyć wstecz.
+Nie włączono usuwania historii ani zmian reguł dostępu Firebase.
+
 Przygotowany sterownik używa wyłącznie funkcji Modbus 03 (odczyt). Nie zapisuje nastaw miernika. Do uruchomienia produkcyjnego konieczne są wyniki porównania z wyświetlaczem ND20.
