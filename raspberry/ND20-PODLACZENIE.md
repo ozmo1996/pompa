@@ -46,7 +46,7 @@ Jeśli agregat jest **3-przewodowy, bez N** albo ma inne napięcie (np. 3 × 400
 
 ## Historia (v2.18)
 
-Proces wymaga `telemetry-history.js` obok `nd20.js` oraz istniejącej zależności `better-sqlite3`.
+Proces wymaga `telemetry-history.js` obok `nd20.js` oraz istniejącej zależności `better-sqlite3` z `/home/pi/pompa-alarmy/node_modules`. Ścieżkę można zmienić przez `nd20.modulSqlite` w konfiguracji.
 W `telemetry.db` zapisuje pełne parametry ND20 co 10 s, niezależnie od pracy falownika.
 Do `pompa/historia` wysyła rekordy `typ: agregat` z obiektem `nd20` co minutę.
 Świeży poziom wody zapisuje także co 5 min na postoju (`typ: woda`).

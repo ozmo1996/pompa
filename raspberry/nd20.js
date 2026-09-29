@@ -63,7 +63,7 @@ async function main() {
   });
   const ref = admin.database().ref(`${cfg.firebase.sciezka}/status/nd20`);
   const { TelemetryHistory } = require("./telemetry-history");
-  const Database = require("better-sqlite3");
+  const Database = require(meter.modulSqlite || "/home/pi/pompa-alarmy/node_modules/better-sqlite3");
   const history = new TelemetryHistory(
     new Database("/home/pi/pompa/telemetry.db"),
     admin.database().ref(`${cfg.firebase.sciezka}/historia`),
