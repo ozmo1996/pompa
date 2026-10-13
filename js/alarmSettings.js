@@ -328,7 +328,8 @@ export function initAlarmSettings() {
   });
   $("addCustomAlarm").addEventListener("click", () => {
     if (!loaded || denied || Object.keys(draft.wlasne).length >= 30) return;
-    draft.wlasne[crypto.randomUUID()] = {
+    const id = Array.from({ length: 30 }, (_, i) => "rule_" + (i + 1)).find((key) => !draft.wlasne[key]);
+    draft.wlasne[id] = {
       tytul: "Nowy alert",
       pomiar: "poziomWodyProc",
       operator: "lt",

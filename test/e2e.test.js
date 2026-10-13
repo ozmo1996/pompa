@@ -138,6 +138,10 @@ test("Ustawienia alarmów: progi, ważność i własny alert zapisują się; edy
     document.getElementById("alarmBackendState").textContent.includes("Raspberry stosuje"),
   );
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  if (process.env.POMPA_UI_CAPTURE) {
+    await page.locator("#alarmSettingsPanel").evaluate((node) => node.scrollIntoView({ block: "start" }));
+    await page.screenshot({ path: process.env.POMPA_UI_CAPTURE });
+  }
   assert.deepEqual(errors, []);
   await ctx.close();
 });

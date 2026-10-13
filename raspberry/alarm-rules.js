@@ -54,8 +54,7 @@ function buildAlarmRules() {
       $other: { ".validate": false },
     },
     wlasne: {
-      ".validate": "newData.numChildren() <= 30",
-      $id: { ...custom, ".validate": custom[".validate"] + " && $id.matches(/^[a-zA-Z0-9_-]{1,80}$/)" },
+      $id: { ...custom, ".validate": custom[".validate"] + " && $id.matches(/^rule_([1-9]|[12][0-9]|30)$/)" },
     },
     $other: { ".validate": false },
   };

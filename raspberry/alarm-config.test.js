@@ -80,7 +80,7 @@ test("Walidacja ustawień: poprawne domyślne, zakresy, relacje i nieznane pomia
   c.progi.tempAwaria = 2;
   assert.match(A.validate(c), /zamarzania/);
   c.progi.tempAwaria = 0.3;
-  c.wlasne.x = {
+  c.wlasne.rule_1 = {
     ...c.reguly.niskiPoziom,
     pomiar: "nieznany",
     operator: "gt",
@@ -111,7 +111,7 @@ test("Wyłączenie reguły zamyka trwający alarm, ważność zmienia się bez n
 test("Własny alert ND20: opóźnienie, niezależna świeżość i brak zerowania po utracie połączenia", async () => {
   const s = service(),
     c = A.defaults();
-  c.wlasne.generator = {
+  c.wlasne.rule_1 = {
     ...c.reguly.przeciazenie,
     pomiar: "nd20.napiecieL1L2",
     operator: "lt",
@@ -123,10 +123,10 @@ test("Własny alert ND20: opóźnienie, niezależna świeżość i brak zerowani
   };
   await s.configure(c);
   await s.read({ nd20: { polaczony: true, aktualizacja: 1000000, napiecieL1L2: 370 } });
-  assert.ok(!Object.values(s.records).some((r) => r.typ === "wlasny_generator"));
+  assert.ok(!Object.values(s.records).some((r) => r.typ === "wlasny_rule_1"));
   s.tick(21000);
   await s.read({ aktualizacja: 1, nd20: { polaczony: true, aktualizacja: 1021000, napiecieL1L2: 370 } });
-  const [name, record] = Object.entries(s.records).find(([, r]) => r.typ === "wlasny_generator");
+  const [name, record] = Object.entries(s.records).find(([, r]) => r.typ === "wlasny_rule_1");
   assert.equal(record.poziom, "ostrzezenie");
   await s.read({ nd20: { polaczony: false, aktualizacja: 1021000, napiecieL1L2: 0 } });
   assert.equal(s.records[name].aktywny, false);
@@ -135,7 +135,7 @@ test("Własny alert ND20: opóźnienie, niezależna świeżość i brak zerowani
 test("Własny alert: tylko w pracy oraz świeży czujnik, nie ostatnia zachowana wartość", async () => {
   const s = service(),
     c = A.defaults();
-  c.wlasne.temp = {
+  c.wlasne.rule_1 = {
     ...c.reguly.zamarzanie,
     pomiar: "temperaturaWody",
     operator: "lt",
@@ -146,7 +146,7 @@ test("Własny alert: tylko w pracy oraz świeży czujnik, nie ostatnia zachowana
   await s.configure(c);
   await s.read({ temperaturaWody: 1.5 });
   await s.read({ temperaturaWody: 1.5, pracuje: true, temperaturaWodyPolaczona: false });
-  assert.ok(!Object.values(s.records).some((r) => r.typ === "wlasny_temp"));
+  assert.ok(!Object.values(s.records).some((r) => r.typ === "wlasny_rule_1"));
   await s.read({ temperaturaWody: 1.5, pracuje: true });
-  assert.ok(Object.values(s.records).some((r) => r.typ === "wlasny_temp"));
+  assert.ok(Object.values(s.records).some((r) => r.typ === "wlasny_rule_1"));
 });

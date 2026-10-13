@@ -190,7 +190,7 @@
     for (const [id, r] of Object.entries(c.wlasne || {})) {
       const m = METRICS[r?.pomiar];
       if (
-        !/^[a-zA-Z0-9_-]{1,80}$/.test(id) ||
+        !/^rule_([1-9]|[12][0-9]|30)$/.test(id) ||
         !validRule(r) ||
         !m ||
         !["lt", "gt"].includes(r.operator) ||

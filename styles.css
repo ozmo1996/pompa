@@ -635,6 +635,9 @@ summary {
   }
 }
 
+.alarm-settings {
+  scroll-margin-top: 90px;
+}
 .alarm-settings > summary {
   font-size: 1.1rem;
   font-weight: 700;
