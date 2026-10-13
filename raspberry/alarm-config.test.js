@@ -5,13 +5,18 @@ const path = require("node:path");
 const vm = require("node:vm");
 const A = require("./alarm-schema.js");
 
-function service() {
+function service({ failCloses = 0 } = {}) {
   let time = 1000000,
     serial = 0;
   const records = {},
-    listeners = {};
+    listeners = {},
+    closeAttempts = [];
   const ref = (name) => ({
     update: async (values) => {
+      if (values.aktywny === false) {
+        closeAttempts.push(name);
+        if (failCloses-- > 0) throw new Error("Przejściowy błąd zapisu");
+      }
       records[name] = { ...(records[name] || {}), ...values };
     },
     push: () => {
@@ -49,6 +54,7 @@ function service() {
   vm.runInContext(fs.readFileSync(path.join(__dirname, "alarmy.js"), "utf8"), context);
   return {
     records,
+    closeAttempts,
     tick: (ms) => {
       time += ms;
     },
@@ -70,6 +76,34 @@ function service() {
     },
   };
 }
+
+test("Alarm: zamknięcie jest ponawiane po błędzie, także przy braku świeżych pomiarów", async () => {
+  const s = service({ failCloses: 1 }),
+    c = A.defaults();
+  await s.configure(c);
+  await s.read({ poziomWodyProc: 10, poziomWodyMa: 4, temperaturaWody: 8 });
+  const name = Object.keys(s.records).find((k) => s.records[k].typ === "niskiPoziom");
+  c.reguly.niskiPoziom.wlaczony = false;
+  await s.configure(c);
+  assert.equal(s.records[name].aktywny, true);
+  assert.equal(s.closeAttempts.length, 1);
+  s.tick(6000);
+  await s.read({ aktualizacja: 1, poziomWodyProc: 80 });
+  assert.equal(s.records[name].aktywny, false);
+  assert.equal(s.closeAttempts.length, 2);
+  await s.read({ poziomWodyProc: 80 });
+  assert.equal(s.closeAttempts.length, 2);
+});
+
+test("Temperatura: ostrzeżenie działa poniżej progu awarii, gdy reguła awarii jest wyłączona", async () => {
+  const s = service(),
+    c = A.defaults();
+  c.reguly.zamarzanie.wlaczony = false;
+  await s.configure(c);
+  await s.read({ temperaturaWody: 0.2, poziomWodyProc: 80, poziomWodyMa: 10 });
+  assert.ok(Object.values(s.records).some((r) => r.typ === "zimnaWoda" && r.aktywny));
+  assert.ok(!Object.values(s.records).some((r) => r.typ === "zamarzanie"));
+});
 
 test("Walidacja ustawień: poprawne domyślne, zakresy, relacje i nieznane pomiary", () => {
   const c = A.defaults();

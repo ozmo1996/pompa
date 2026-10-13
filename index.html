@@ -165,6 +165,7 @@
               <div>
                 <p class="eyebrow">Zbiornik</p>
                 <h2>Poziom wody</h2>
+                <p id="waterState" class="small" role="status"></p>
               </div>
               <div class="water-main">
                 <div>
@@ -175,6 +176,7 @@
                   <p id="sensorCurrent" class="small" data-param="mA">Prąd sondy: — mA</p>
                   <div id="waterTempBox" class="temp" data-param="tWody">
                     <b id="waterTemp">— °C</b><small>Temperatura wody</small>
+                    <small id="waterTempState"></small>
                   </div>
                 </div>
                 <div class="tank-stage" aria-hidden="true" data-param="poziom">
@@ -185,7 +187,7 @@
                     </div>
                     <div class="tank-ticks"><span>250 cm</span><span>125 cm</span><span>0 cm</span></div>
                   </div>
-                  <div class="tank-caption">Poziom w zbiorniku</div>
+                  <div class="tank-caption" id="tankCaption">Poziom w zbiorniku</div>
                 </div>
               </div>
               <div
@@ -435,6 +437,7 @@
           <div id="statsMessage" class="notice" role="status">
             Próbki pracy pojawią się podczas pracy pompy lub korzystania z aplikacji.
           </div>
+          <p id="statsRefreshState" class="small" role="status">Odświeżanie co minutę podczas oglądania.</p>
           <div class="stats-grid">
             <article class="card stat"><small>Średni poziom</small><b id="avgWater">—</b></article>
             <article class="card stat"><small>Zakres poziomu</small><b id="waterRange">—</b></article>
@@ -451,12 +454,16 @@
           </article>
 
           <article class="card chart">
-            <h2>Praca falownika</h2>
-            <canvas id="pumpChart" height="230" aria-label="Wykres częstotliwości, prądu i mocy"></canvas>
-            <div class="legend">
-              <span><i class="sw-hz"></i>Częstotliwość Hz</span><span><i class="sw-current"></i>Prąd A</span
-              ><span><i class="sw-power"></i>Moc kW</span>
-            </div>
+            <h2>Moc falownika · kW</h2>
+            <canvas id="pumpChart" height="230" aria-label="Wykres mocy falownika w kW"></canvas>
+          </article>
+          <article class="card chart">
+            <h2>Częstotliwość falownika · Hz</h2>
+            <canvas id="pumpHzChart" height="230" aria-label="Wykres częstotliwości falownika w Hz"></canvas>
+          </article>
+          <article class="card chart">
+            <h2>Prąd falownika · A</h2>
+            <canvas id="pumpCurrentChart" height="230" aria-label="Wykres prądu falownika w A"></canvas>
           </article>
 
           <article class="card wide">
@@ -567,18 +574,24 @@
           <details class="card alarm-settings" id="alarmSettingsPanel">
             <summary>Ustawienia alertów, ostrzeżeń i awarii</summary>
             <p id="alarmSettingsSummary" class="small"></p>
+            <p class="small">Ustaw progi i ważność. Reguły działają na Raspberry także przy zamkniętej aplikacji.</p>
             <p class="small">
-              Wybierz reguły, progi i ważność. Ustawienia działają na Raspberry również przy zamkniętej aplikacji.
-              Zmiana ważności dotyczy powiadomień i dziennika, a zabezpieczenia sprzętowe działają niezależnie.
-            </p>
-            <p class="small">
-              Informacja trafia do dziennika; ostrzeżenia i awarie mogą wysyłać push zgodnie z ustawieniami telefonu.
-              „Automatyczna” zachowuje domyślną ważność reguły. Czasy są podane w sekundach.
+              Informacje trafiają do dziennika; ostrzeżenia i awarie mogą wysyłać push. Czasy podano w sekundach.
             </p>
             <p id="alarmBackendState" class="notice" role="status"></p>
             <form id="alarmSettingsForm">
               <fieldset id="alarmSettingsFields" disabled>
                 <legend class="sr-only">Reguły powiadomień</legend>
+                <label class="alarm-setting-field" for="alarmRuleSearch"
+                  >Znajdź regułę
+                  <input
+                    id="alarmRuleSearch"
+                    type="search"
+                    placeholder="Np. temperatura, wiatr, falownik"
+                    autocomplete="off"
+                  />
+                </label>
+                <p id="alarmSearchEmpty" class="small" hidden>Brak pasujących reguł.</p>
                 <div id="alarmRuleGroups"></div>
                 <h3>Własne alerty</h3>
                 <p class="small">

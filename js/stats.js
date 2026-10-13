@@ -1,11 +1,12 @@
 // Zakładka „Statystyki”: historia poziomu i pracy, cykle zbiornika, ostatnie próbki.
-import { cyclesFrom, duration, fmt, isNum, waterVolumeM3 } from "./logic.js";
+import { chartSegments, cyclesFrom, duration, fmt, isNum, niceStep, waterVolumeM3 } from "./logic.js";
 import { workHistory } from "./history.js";
-import { $, el, now, onShowView, user } from "./state.js";
+import { $, S, el, now, onShowView, user } from "./state.js";
 
 let days = 1,
   rows = [],
-  loadSeq = 0;
+  loadSeq = 0,
+  pendingLoads = 0;
 
 export function resetStats() {
   rows = [];
@@ -13,18 +14,23 @@ export function resetStats() {
   renderStats();
 }
 
-function drawChart(id, series, maxY) {
+function drawChart(id, key, color, unit, minimumMax, maxGap) {
   const canvas = $(id),
     box = canvas.getBoundingClientRect(),
     dpr = Math.min(devicePixelRatio || 1, 2),
-    w = Math.max(320, Math.round(box.width)),
+    w = Math.max(240, Math.round(box.width)),
     h = 230;
   canvas.width = w * dpr;
   canvas.height = h * dpr;
   const c = canvas.getContext("2d");
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   c.clearRect(0, 0, w, h);
-  const pad = { l: 42, r: 14, t: 14, b: 28 },
+  const segments = chartSegments(rows, key, maxGap);
+  let maximum = minimumMax;
+  for (const segment of segments) for (const p of segment) maximum = Math.max(maximum, p.value);
+  const stepY = niceStep(maximum / 4),
+    maxY = Math.ceil(maximum / stepY) * stepY;
+  const pad = { l: 45, r: 14, t: 24, b: 28 },
     iw = w - pad.l - pad.r,
     ih = h - pad.t - pad.b;
   c.font = "11px system-ui";
@@ -39,24 +45,30 @@ function drawChart(id, series, maxY) {
     c.stroke();
     c.fillText(String(Math.round(maxY * (1 - i / 4))), 4, y + 4);
   }
-  if (!rows.length) return;
-  const first = rows[0].czas,
-    last = rows.at(-1).czas || first + 1;
-  c.fillText(new Date(first).toLocaleDateString("pl-PL"), pad.l, h - 7);
-  const endLabel = new Date(last).toLocaleDateString("pl-PL");
+  c.fillText(unit, 4, 12);
+  if (!segments.length) {
+    c.fillText("Brak pomiarów w tym zakresie", pad.l, h / 2);
+    return;
+  }
+  const first = now() - days * 86400e3,
+    last = now();
+  const tick = (t) =>
+    new Date(t).toLocaleString("pl-PL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  c.fillText(tick(first), pad.l, h - 7);
+  const endLabel = tick(last);
   c.fillText(endLabel, w - pad.r - c.measureText(endLabel).width, h - 7);
   // co najwyżej ~2 punkty na piksel szerokości — przy 30 dniach to tysiące razy mniej operacji
-  const step = Math.max(1, Math.ceil(rows.length / (iw * 2)));
-  for (const s of series) {
-    c.strokeStyle = s.color;
+  for (const segment of segments) {
+    const step = Math.max(1, Math.ceil(segment.length / (iw * 2)));
+    const points = segment.filter((_, i) => i % step === 0 || i === segment.length - 1);
+    c.strokeStyle = color;
+    c.fillStyle = color;
     c.lineWidth = 2;
     c.lineJoin = "round";
     c.beginPath();
     let started = false;
-    for (let i = 0; i < rows.length; i += step) {
-      const row = rows[i],
-        v = s.get ? s.get(row) : row[s.key];
-      if (!isNum(v)) continue;
+    for (const row of points) {
+      const v = row.value;
       const x = pad.l + ((row.czas - first) / Math.max(1, last - first)) * iw,
         y = pad.t + (1 - Math.max(0, Math.min(maxY, v)) / maxY) * ih;
       if (started) c.lineTo(x, y);
@@ -66,6 +78,12 @@ function drawChart(id, series, maxY) {
       }
     }
     c.stroke();
+    if (points.length === 1) {
+      const p = points[0];
+      c.beginPath();
+      c.arc(pad.l + ((p.czas - first) / (last - first)) * iw, pad.t + (1 - p.value / maxY) * ih, 2.5, 0, 2 * Math.PI);
+      c.fill();
+    }
   }
 }
 
@@ -88,7 +106,7 @@ export function renderStats() {
   $("lastDrain").textContent = drains.length ? duration(drains.at(-1).end - drains.at(-1).start) : "Brak cyklu";
   $("sampleCount").textContent = rows.length + " " + (rows.length === 1 ? "próbka" : "próbek");
   $("statsMessage").textContent = !rows.length
-    ? "Brak zapisanej historii w wybranym zakresie. Nowe próbki są zapisywane co minutę."
+    ? "Brak zapisanej historii w wybranym zakresie. Poziom wody jest zapisywany także co 5 minut na postoju."
     : rows.length < 3
       ? "Zebrano pierwsze próbki. Wiarygodne czasy napełniania i opróżniania pojawią się po wykryciu pełniejszych cykli."
       : "Dane od " + when(rows[0].czas) + " do " + when(rows.at(-1).czas) + ".";
@@ -137,34 +155,31 @@ export function renderStats() {
   );
   requestAnimationFrame(() => {
     if ($("statsView").hidden) return;
-    drawChart("waterChart", [{ key: "poziom", color: "#4cc9e8" }], 100);
-    let maxPump = 50;
-    for (const x of rows) maxPump = Math.max(maxPump, Number(x.hz) || 0, Number(x.prad) || 0, Number(x.moc) || 0);
-    drawChart(
-      "pumpChart",
-      [
-        { key: "hz", color: "#d6f48a" },
-        { key: "prad", color: "#f0c995" },
-        { key: "moc", color: "#b99cf0" },
-      ],
-      Math.ceil(maxPump / 10) * 10,
-    );
+    drawChart("waterChart", "poziom", "#4cc9e8", "%", 100, 6 * 60000);
+    drawChart("pumpChart", "moc", "#b99cf0", "kW", 10, 2 * 60000);
+    drawChart("pumpHzChart", "hz", "#d6f48a", "Hz", 50, 2 * 60000);
+    drawChart("pumpCurrentChart", "prad", "#f0c995", "A", 10, 2 * 60000);
   });
 }
 
-async function loadStats() {
+async function loadStats(maxAge = 60000) {
   if (!user()) return;
   const seq = ++loadSeq,
     cached = workHistory.rows.length > 0;
   if (!cached) $("statsMessage").textContent = "Pobieranie historii…";
+  pendingLoads++;
   try {
-    const r = await workHistory.ensure(now() - days * 86400e3);
+    const r = await workHistory.ensure(now() - days * 86400e3, maxAge);
     if (seq !== loadSeq) return; // w międzyczasie wybrano inny zakres
     rows = r.filter((x) => x.typ !== "agregat");
     renderStats();
+    $("statsRefreshState").textContent =
+      "Odświeżanie co minutę · ostatnio " + new Date(now()).toLocaleTimeString("pl-PL");
   } catch {
     if (seq === loadSeq)
       $("statsMessage").textContent = "Nie udało się pobrać historii. Sprawdź połączenie i spróbuj ponownie.";
+  } finally {
+    pendingLoads--;
   }
 }
 
@@ -181,4 +196,10 @@ export function initStats() {
   window.addEventListener("resize", () => {
     if (!$("statsView").hidden && rows.length) renderStats();
   });
+  const refresh = () => {
+    if (!$("statsView").hidden && document.visibilityState !== "hidden" && S.connected && user() && !pendingLoads)
+      loadStats(0);
+  };
+  setInterval(refresh, 60000);
+  document.addEventListener("visibilitychange", refresh);
 }

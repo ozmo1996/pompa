@@ -42,6 +42,8 @@ export function seedData(now = Date.now(), { fresh = true } = {}) {
         energia: 12345.6,
         limitAktywny: false,
         poziomWodyProc: 64.2,
+        sondaPolaczona: true,
+        temperaturaWodyPolaczona: true,
         poziomWodyM3: 770.4,
         poziomWodyMa: 14.27,
         temperaturaWody: 3.4,

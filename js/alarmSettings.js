@@ -84,6 +84,7 @@ function ruleControls(r, definition) {
 }
 function renderRules() {
   const container = $("alarmRuleGroups");
+  const expanded = new Set([...container.querySelectorAll("details[open]")].map((node) => node.dataset.group));
   container.replaceChildren();
   for (const group of [...new Set(Object.values(A.RULES).map((r) => r.group))]) {
     const entries = Object.entries(A.RULES).filter(([, r]) => r.group === group);
@@ -92,6 +93,8 @@ function renderRules() {
       { className: "alarm-setting-group" },
       el("summary", { textContent: `${group} · ${entries.length} reguł` }),
     );
+    details.dataset.group = group;
+    details.open = expanded.has(group);
     for (const [id, definition] of entries) {
       const r = draft.reguly[id];
       const card = el(
@@ -107,6 +110,11 @@ function renderRules() {
         ),
         ruleControls(r, definition),
       );
+      card.dataset.search = [definition.title, group, ...definition.fields.map((key) => A.PROGI[key].label)].join(" ");
+      const enable = card.querySelector('input[type="checkbox"]');
+      enable.parentElement.querySelector("span").textContent = "Włączona";
+      card.classList.toggle("is-disabled", !r.wlaczony);
+      enable.addEventListener("change", () => card.classList.toggle("is-disabled", !r.wlaczony));
       for (const key of definition.fields) {
         const p = A.PROGI[key];
         card.append(
@@ -158,6 +166,35 @@ function renderRules() {
     ),
   );
   container.append(shared);
+  shared.dataset.group = "shared";
+  shared.open = expanded.has("shared");
+}
+function filterRules() {
+  const normalize = (value) =>
+    String(value)
+      .toLocaleLowerCase("pl-PL")
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "");
+  const query = normalize($("alarmRuleSearch").value.trim());
+  let matches = 0;
+  for (const group of $("alarmRuleGroups").querySelectorAll("details")) {
+    const cards = [...group.querySelectorAll(".alarm-rule")];
+    let visible = 0;
+    for (const card of cards) {
+      card.hidden = !!query && !normalize(card.dataset.search).includes(query);
+      if (!card.hidden) visible++;
+    }
+    if (!cards.length) visible = !query || normalize(group.textContent).includes(query) ? 1 : 0;
+    group.hidden = !visible;
+    if (query && visible) group.open = true;
+    matches += visible;
+  }
+  for (const card of $("customAlarmList").querySelectorAll(".alarm-rule")) {
+    const r = draft.wlasne[card.dataset.customId];
+    card.hidden = !!query && !normalize(r.tytul + " " + A.METRICS[r.pomiar].title).includes(query);
+    if (!card.hidden) matches++;
+  }
+  $("alarmSearchEmpty").hidden = !query || matches > 0;
 }
 function renderCustom() {
   const list = $("customAlarmList");
@@ -189,35 +226,36 @@ function renderCustom() {
       changed();
       renderCustom();
     });
-    list.append(
+    const card = el(
+      "article",
+      { className: "alarm-rule" },
+      toggle("Włącz własny alert", r.wlaczony, (value) => {
+        r.wlaczony = value;
+      }),
+      field("Nazwa alertu", title),
       el(
-        "article",
-        { className: "alarm-rule" },
-        toggle("Włącz własny alert", r.wlaczony, (value) => {
-          r.wlaczony = value;
-        }),
-        field("Nazwa alertu", title),
-        el(
-          "div",
-          { className: "alarm-setting-grid" },
-          field("Pomiar", measurement),
-          field(
-            "Warunek",
-            select({ lt: "Poniżej progu", gt: "Powyżej progu" }, r.operator, (v) => {
-              r.operator = v;
-            }),
-          ),
-          el("label", { className: "alarm-setting-field" }, unit, thresholds),
-          toggle("Tylko podczas pracy pompy", r.tylkoPraca, (v) => {
-            r.tylkoPraca = v;
+        "div",
+        { className: "alarm-setting-grid" },
+        field("Pomiar", measurement),
+        field(
+          "Warunek",
+          select({ lt: "Poniżej progu", gt: "Powyżej progu" }, r.operator, (v) => {
+            r.operator = v;
           }),
         ),
-        ruleControls(r, {}),
-        remove,
+        el("label", { className: "alarm-setting-field" }, unit, thresholds),
+        toggle("Tylko podczas pracy pompy", r.tylkoPraca, (v) => {
+          r.tylkoPraca = v;
+        }),
       ),
+      ruleControls(r, {}),
+      remove,
     );
+    card.dataset.customId = id;
+    list.append(card);
   }
   $("addCustomAlarm").disabled = Object.keys(draft.wlasne || {}).length >= 30 || !loaded || denied || busy;
+  filterRules();
 }
 function renderEditor() {
   renderRules();
@@ -231,6 +269,7 @@ export function resetAlarmSettings() {
   loaded = dirty = denied = busy = false;
   backend = null;
   errorMessage = "";
+  $("alarmRuleSearch").value = "";
   renderEditor();
 }
 export function setAlarmSettings(snapshot) {
@@ -273,7 +312,7 @@ export function renderAlarmSettingsStatus() {
         : loaded
           ? "Ustawienia zapisane."
           : "Pobieranie ustawień…");
-  const fresh = backend?.wersja === "2.19" && isFresh(backend.aktualizacja, now(), 90000);
+  const fresh = /^2\./.test(backend?.wersja || "") && isFresh(backend.aktualizacja, now(), 90000);
   $("alarmBackendState").textContent = !fresh
     ? "Oczekiwanie na potwierdzenie serwisu alarmów Raspberry."
     : backend.ustawieniaId === (saved.id || "domyslne")
@@ -321,6 +360,7 @@ async function saveSettings(event) {
   }
 }
 export function initAlarmSettings() {
+  $("alarmRuleSearch").addEventListener("input", filterRules);
   $("alarmSettingsForm").addEventListener("submit", saveSettings);
   $("discardAlarmSettings").addEventListener("click", () => {
     draft = clone(saved);

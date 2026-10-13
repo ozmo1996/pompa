@@ -106,23 +106,39 @@ function renderND20() {
 
 function renderWater() {
   const s = S.status,
-    water = s?.poziomWodyProc,
+    waterFresh = isLive() && s?.sondaPolaczona === true,
+    tempFresh = isLive() && s?.temperaturaWodyPolaczona === true,
+    water = waterFresh ? s.poziomWodyProc : null,
     pct = isNum(water) ? clamp(water, 0, 100) : 0;
   $("water").textContent = fmt(water);
+  $("waterState").textContent = waterFresh
+    ? "Aktualny odczyt sondy"
+    : s?.sondaPolaczona === false
+      ? "Sonda poziomu niepołączona"
+      : "Brak aktualnego odczytu poziomu";
+  $("waterState").classList.toggle("sensor-stale", !waterFresh);
+  $("tankCaption").textContent = waterFresh ? "Poziom w zbiorniku" : "Brak odczytu";
+  $("tankWater").closest(".tank-vessel").classList.toggle("sensor-unknown", !waterFresh);
   $("waterCm").textContent = isNum(water) ? fmt((pct * CFG.zbiornik.wysokoscCm) / 100, " cm", 1) : "— cm";
   const volume = waterVolumeM3(water);
-  $("volume").textContent = volume === null ? "Brak odczytu z czujnika" : "≈ " + fmt(volume, " m³", 0) + " wody";
+  $("volume").textContent =
+    volume === null ? "Objętość: brak aktualnego odczytu" : "≈ " + fmt(volume, " m³", 0) + " wody";
   $("tankCapacity").textContent = "Szacowana pojemność: ≈ " + fmt(tankCapacityM3(), " m³", 0);
-  $("sensorCurrent").textContent = isNum(s?.poziomWodyMa)
-    ? "Prąd sondy: " + fmt(s.poziomWodyMa, " mA")
-    : "Prąd sondy: brak danych";
+  $("sensorCurrent").textContent =
+    waterFresh && isNum(s?.poziomWodyMa) ? "Prąd sondy: " + fmt(s.poziomWodyMa, " mA") : "Prąd sondy: brak danych";
   $("waterFill").style.width = pct + "%";
   $("tankWater").style.height = pct + "%";
   if (isNum(water)) $("waterBar").setAttribute("aria-valuenow", String(water));
   else $("waterBar").removeAttribute("aria-valuenow");
-  const tw = s?.temperaturaWody,
-    cold = isNum(tw) && tw <= P.temperaturaZamarzaniaC;
+  const tw = tempFresh ? s.temperaturaWody : null,
+    cold = isNum(tw) && tw <= (S.alarmCfg?.progi.tempOstrzezenie ?? P.temperaturaZamarzaniaC);
   $("waterTemp").textContent = fmt(tw, " °C");
+  $("waterTempState").textContent = tempFresh
+    ? "Odczyt aktualny"
+    : s?.temperaturaWodyPolaczona === false
+      ? "Sonda temperatury niepołączona"
+      : "Brak aktualnego odczytu";
+  $("waterTempBox").classList.toggle("sensor-stale", !tempFresh);
   $("waterTempBox").classList.toggle("cold", cold);
   $("waterTempBox").title = cold ? "Woda bliska zamarzania" : "";
 }

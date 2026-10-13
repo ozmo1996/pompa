@@ -218,7 +218,11 @@ export function cyclesFrom(rows, { minStep = 0.3, minChange = 1, minMs = 60000, 
   for (let i = 1; i < rows.length; i++) {
     const a = rows[i - 1],
       b = rows[i];
-    if (!isNum(a.poziom) || !isNum(b.poziom) || b.czas - a.czas > maxGapMs) continue;
+    if (!isNum(a.poziom) || !isNum(b.poziom) || b.czas - a.czas > maxGapMs) {
+      if (keep(cycle)) result.push(cycle);
+      cycle = null;
+      continue;
+    }
     const delta = b.poziom - a.poziom,
       dir = delta >= minStep ? "up" : delta <= -minStep ? "down" : null;
     if (!dir || cycle?.dir !== dir) {
@@ -231,6 +235,27 @@ export function cyclesFrom(rows, { minStep = 0.3, minChange = 1, minMs = 60000, 
   }
   if (keep(cycle)) result.push(cycle);
   return result;
+}
+
+/** Oddzielne odcinki wykresu; null przerywa pomiar, brak pola to rekord innego czujnika. */
+export function chartSegments(rows, key, maxGapMs) {
+  const segments = [];
+  let current = [];
+  const flush = () => {
+    if (current.length) segments.push(current);
+    current = [];
+  };
+  for (const row of rows) {
+    if (!(key in row)) continue;
+    if (!isNum(row[key]) || !isNum(row.czas)) {
+      flush();
+      continue;
+    }
+    if (current.length && row.czas - current.at(-1).czas > maxGapMs) flush();
+    current.push({ czas: row.czas, value: row[key] });
+  }
+  flush();
+  return segments;
 }
 
 /** Scala posortowane rekordy historii (po `czas`), bez duplikatów. */

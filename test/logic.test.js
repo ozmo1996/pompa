@@ -7,6 +7,7 @@ import {
   changePreview,
   currentSetpoint,
   cyclesFrom,
+  chartSegments,
   driveStateText,
   duration,
   energyDigits,
@@ -183,6 +184,37 @@ test("cyclesFrom: wykrywa napełnianie i opróżnianie, pomija szum i przerwy", 
     0,
   );
   assert.deepEqual(cyclesFrom([]), []);
+});
+
+test("Cykle: przerwa w pomiarach kończy cykl zamiast dopisywać do niego kilka godzin", () => {
+  const rows = [
+    { czas: 1000000, poziom: 50 },
+    { czas: 1060000, poziom: 49 },
+    { czas: 8200000, poziom: 20 },
+    { czas: 8260000, poziom: 19 },
+  ];
+  const result = cyclesFrom(rows);
+  assert.equal(result.length, 2);
+  assert.ok(result.every((c) => c.end - c.start === 60000));
+});
+
+test("Wykres: odcinki rozdzielają brak pomiaru i przerwę, ale pomijają rekord innego czujnika", () => {
+  const segments = chartSegments(
+    [
+      { czas: 1, moc: 10 },
+      { czas: 2, poziom: 50 },
+      { czas: 3, moc: 12 },
+      { czas: 4, moc: null },
+      { czas: 5, moc: 13 },
+      { czas: 999, moc: 14 },
+    ],
+    "moc",
+    100,
+  );
+  assert.deepEqual(
+    segments.map((s) => s.map((p) => p.value)),
+    [[10, 12], [13], [14]],
+  );
 });
 
 test("mergeRows i lowerBound", () => {

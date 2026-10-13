@@ -136,6 +136,11 @@ function cond(typ, isTrue, defFn, { delayS = 0, clearS = P.zakonczenieS } = {}) 
   if (isTrue) {
     if (a) {
       a.clearSince = 0;
+      a.retryAt = 0;
+      if (a.closing) {
+        a.resume = defFn;
+        return;
+      }
       const level = rule?.poziom === "auto" ? defFn().poziom : rule?.poziom;
       if (level && a.id && a.poziom !== level) {
         a.poziom = level;
@@ -167,21 +172,35 @@ function cond(typ, isTrue, defFn, { delayS = 0, clearS = P.zakonczenieS } = {}) 
       });
   } else {
     pending.delete(typ);
-    if (!a || a.creating) return;
+    if (a?.closing) {
+      a.resume = null;
+      return;
+    }
+    if (!a || a.creating || a.closing || now() < (a.retryAt || 0)) return;
     if (!a.clearSince) a.clearSince = now();
     if (now() - a.clearSince >= clearS * 1000) {
-      active.delete(typ);
       if (!a.id) return;
+      a.closing = true;
+      a.retryAt = 0;
       db.ref("pompa/alarmy/" + a.id)
         .update({ aktywny: false, zakonczono: now() })
-        .catch((e) => log("zamknięcie błąd", e.message));
-      log("KONIEC", typ);
-      if (a.poziom === "awaria")
-        push(
-          { typ, poziom: "awaria", tytul: "Ustąpiło: " + a.tytul, opis: "Warunek alarmu już nie występuje." },
-          a.id,
-          true,
-        ).catch(() => {});
+        .then(() => {
+          if (active.get(typ) === a) active.delete(typ);
+          log("KONIEC", typ);
+          if (a.poziom === "awaria")
+            push(
+              { typ, poziom: "awaria", tytul: "Ustąpiło: " + a.tytul, opis: "Warunek alarmu już nie występuje." },
+              a.id,
+              true,
+            ).catch(() => {});
+          if (a.resume) cond(typ, true, a.resume);
+        })
+        .catch((e) => {
+          a.closing = false;
+          a.resume = null;
+          a.retryAt = now() + 5000;
+          log("zamknięcie błąd — ponowienie", e.message);
+        });
     }
   }
 }
@@ -208,6 +227,7 @@ function evaluate() {
   }));
   if (!fresh) {
     evaluateCustom();
+    retryClosures();
     return;
   } // ND20 i pogoda mają własne znaczniki czasu
 
@@ -416,11 +436,15 @@ function evaluate() {
     tytul: "Woda zamarza",
     opis: `Temperatura wody ${f(tw)} °C.`,
   }));
-  cond("zimnaWoda", num(tw) && tw <= P.tempOstrzezenie && tw > P.tempAwaria, () => ({
-    poziom: "ostrzezenie",
-    tytul: "Woda bliska zamarzania",
-    opis: `Temperatura wody ${f(tw)} °C.`,
-  }));
+  cond(
+    "zimnaWoda",
+    num(tw) && tw <= P.tempOstrzezenie && (tw > P.tempAwaria || !settings.reguly.zamarzanie.wlaczony),
+    () => ({
+      poziom: "ostrzezenie",
+      tytul: "Woda bliska zamarzania",
+      opis: `Temperatura wody ${f(tw)} °C.`,
+    }),
+  );
   const t30 = ago(P.spadekTempMin * 60)?.s?.temperaturaWody;
   if (num(tw) && num(t30) && t30 - tw >= P.spadekTempC && tw < P.spadekTempPonizejC)
     event("spadekTemp", {
@@ -429,6 +453,11 @@ function evaluate() {
       opis: `${f(t30)} → ${f(tw)} °C w ${P.spadekTempMin} min.`,
     });
   evaluateCustom();
+  retryClosures();
+}
+
+function retryClosures() {
+  for (const [typ, entry] of active) if (entry.retryAt && now() >= entry.retryAt) cond(typ, false, () => ({}));
 }
 
 function evaluateCustom() {
@@ -473,7 +502,7 @@ async function applySettings(value) {
 function reportSettings() {
   return db
     .ref("pompa/statusAlarmow")
-    .update({ wersja: "2.19", aktualizacja: now(), ustawieniaId: settings.id || "domyslne" });
+    .update({ wersja: "2.20", aktualizacja: now(), ustawieniaId: settings.id || "domyslne" });
 }
 
 // ---------- powiadomienia push ----------

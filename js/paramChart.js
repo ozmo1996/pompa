@@ -291,6 +291,15 @@ let pc = null, // { key, hover, loading, error, points, geo }
   timer = null;
 const cacheFor = (P) => (P.g === "Pogoda" ? weatherHistory : workHistory);
 const hhmm = (t) => new Date(t).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+function currentValue(P) {
+  if (
+    P.g === "Zbiornik" &&
+    (!isLive() ||
+      (P.pole === "temperaturaWody" ? S.status?.temperaturaWodyPolaczona !== true : S.status?.sondaPolaczona !== true))
+  )
+    return null;
+  return P.now(S.status);
+}
 
 function points(P) {
   const t0 = now() - WIN,
@@ -301,7 +310,7 @@ function points(P) {
   }
   // dołóż bieżący odczyt, jeśli jest świeższy niż ostatni zapis w historii
   const t = Number(P.timestamp ? P.timestamp(S.status) : S.status?.aktualizacja),
-    v = P.now(S.status);
+    v = currentValue(P);
   if (isFresh(t, now()) && isNum(v) && (!pts.length || t > pts.at(-1).t + 20000)) pts.push({ t, v, live: true });
   return pts;
 }
@@ -312,7 +321,7 @@ function render() {
     pts = (pc.points = points(P)),
     f = (v) => fmt(v, P.u, P.d),
     live = pts.at(-1)?.live,
-    nowV = P.now(S.status),
+    nowV = currentValue(P),
     vs = pts.map((x) => x.v);
   $("pcGroup").textContent = P.g + " · ostatnie 6 godzin";
   $("pcTitle").textContent = P.n;

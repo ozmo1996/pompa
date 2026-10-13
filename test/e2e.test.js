@@ -42,12 +42,12 @@ after(async () => {
 });
 
 /** Otwiera aplikację z podanym stanem bazy. clockSkew — o ile zegar telefonu różni się od rzeczywistego. */
-async function open({ data, seed = {}, clockSkew = 0, sdkFails = false } = {}) {
+async function open({ data, seed = {}, clockSkew = 0, sdkFails = false, clock = false } = {}) {
   const ctx = await browser.newContext({ locale: "pl-PL", timezoneId: "Europe/Warsaw", serviceWorkers: "block" });
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  if (clockSkew) await page.clock.install({ time: Date.now() + clockSkew });
+  if (clockSkew || clock) await page.clock.install({ time: Date.now() + clockSkew });
   await page.route(/gstatic\.com\/firebasejs/, (r) =>
     sdkFails ? r.abort() : r.fulfill({ contentType: "text/javascript", body: MOCK }),
   );
@@ -171,6 +171,76 @@ test("Ustawienia alarmów: błędne progi i konflikt drugiego urządzenia nie na
     document.getElementById("alarmSettingsMessage").textContent.includes("innym urządzeniu"),
   );
   assert.equal((await writes(page, "pompa/ustawienia/alarmy")).length, 0);
+  await ctx.close();
+});
+
+test("Sondy: odłączone i nieaktualne czujniki nie pokazują ostatnich wartości jako bieżących", async () => {
+  const { page, ctx } = await open();
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.evaluate(() => {
+    globalThis.__fb.set("pompa/status/sondaPolaczona", false);
+    globalThis.__fb.set("pompa/status/temperaturaWodyPolaczona", false);
+  });
+  await page.waitForFunction(() => document.getElementById("water").textContent === "—");
+  assert.match(await page.textContent("#waterState"), /niepołączona/);
+  assert.equal(await page.textContent("#waterTemp"), "— °C");
+  assert.match(await page.textContent("#tankCaption"), /Brak odczytu/);
+  assert.equal(await page.getAttribute("#waterBar", "aria-valuenow"), null);
+  await page.click("#waterTempBox");
+  await page.waitForSelector("#paramDlg[open]");
+  assert.equal(await page.textContent("#pcNow"), "— °C");
+  await page.click("#pcClose");
+  await page.evaluate(() => {
+    globalThis.__fb.set("pompa/status/sondaPolaczona", true);
+    globalThis.__fb.set("pompa/status/temperaturaWodyPolaczona", true);
+    globalThis.__fb.set("pompa/status/aktualizacja", Date.now() - 60000);
+  });
+  await page.waitForFunction(() => document.getElementById("waterState").textContent.includes("Brak aktualnego"));
+  assert.equal(await page.textContent("#waterTemp"), "— °C");
+  await ctx.close();
+});
+
+test("Statystyki: automatycznie dociągają nową próbkę i mają osobne wykresy z jednostkami", async () => {
+  const { page, ctx, errors } = await open({ clock: true });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#statsTab");
+  await page.waitForFunction(() => document.getElementById("sampleCount").textContent !== "0 próbek");
+  const count = parseInt(await page.textContent("#sampleCount"));
+  await page.evaluate(() =>
+    globalThis.__fb.set("pompa/historia/new-water", { czas: Date.now() + 1000, typ: "woda", poziom: 40 }),
+  );
+  await page.clock.fastForward(61000);
+  await page.waitForFunction((n) => parseInt(document.getElementById("sampleCount").textContent) === n + 1, count);
+  assert.equal(await page.isVisible("#pumpChart"), true);
+  assert.equal(await page.isVisible("#pumpHzChart"), true);
+  assert.equal(await page.isVisible("#pumpCurrentChart"), true);
+  assert.match(await page.getAttribute("#pumpChart", "aria-label"), /kW/);
+  assert.match(await page.textContent("#statsRefreshState"), /ostatnio/);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("Alarmy na telefonie: wyszukiwanie i zapis dostępny podczas przewijania, grupa pozostaje otwarta", async () => {
+  const { page, ctx, errors } = await open();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#alarmsTab");
+  await page.click("#alarmSettingsPanel > summary");
+  await page.fill("#alarmRuleSearch", "temperatura");
+  assert.equal(await page.isVisible("#rule-zimnaWoda"), true);
+  assert.equal(await page.isVisible("#rule-przelew"), false);
+  await page.locator("#rule-zimnaWoda select").selectOption("info");
+  await page.mouse.wheel(0, 400);
+  const bar = await page.locator(".alarm-settings-actions").boundingBox();
+  assert.ok(bar.y >= 0 && bar.y + bar.height <= 846);
+  await page.click("#saveAlarmSettings");
+  await page.waitForFunction(() =>
+    document.getElementById("alarmSettingsMessage").textContent.includes("Ustawienia zapisane"),
+  );
+  assert.equal(await page.isVisible("#rule-zimnaWoda"), true);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  if (process.env.POMPA_UI_CAPTURE) await page.screenshot({ path: process.env.POMPA_UI_CAPTURE });
+  assert.deepEqual(errors, []);
   await ctx.close();
 });
 
