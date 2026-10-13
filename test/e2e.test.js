@@ -76,6 +76,20 @@ test("600 ECO: ciśnienie ręczne, czujnik, wygaśnięcie i nieaktualna pogoda",
   assert.match(await page.textContent("#valveBasis"), /−?\-?5 °C \/ 32 bar/);
   assert.match(await page.textContent("#wetBulbMethod"), /800 m/);
   assert.equal(await page.locator("#valve2").textContent(), "Zawór 2: zamknięty");
+  await page.click("#showValveTable");
+  assert.equal(await page.isVisible("#valveTableDlg"), true);
+  assert.equal(await page.locator("#valveTableBody tr").count(), 17);
+  assert.equal(await page.locator("#valveTableBody td").count(), 272);
+  assert.equal(await page.locator("#valveTableHead th").count(), 17);
+  assert.equal(await page.locator("#fullValveTable .selected-cell").textContent(), "1+3");
+  assert.equal(await page.locator("#fullValveTable .selected-cell").getAttribute("data-pressure"), "32");
+  assert.ok(await page.locator(".valve-table-scroll").evaluate((node) => node.scrollWidth > node.clientWidth));
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  if (process.env.POMPA_TABLE_CAPTURE)
+    await page.locator("#valveTableDlg").screenshot({ path: process.env.POMPA_TABLE_CAPTURE });
+  await page.keyboard.press("Escape");
+  assert.equal(await page.isVisible("#valveTableDlg"), false);
+  assert.equal(await page.evaluate(() => document.activeElement.id), "showValveTable");
   if (process.env.POMPA_VALVE_CAPTURE)
     await page.locator(".valve-card").screenshot({ path: process.env.POMPA_VALVE_CAPTURE });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
@@ -97,6 +111,10 @@ test("600 ECO: ciśnienie ręczne, czujnik, wygaśnięcie i nieaktualna pogoda",
   await page.waitForFunction(() => document.getElementById("valveBasis").textContent.includes("aktualne dane"));
   assert.equal(await page.textContent("#valveResult"), "Brak wskazówki");
   assert.equal((await writes(page, "pompa/polecenie")).length, 0);
+  await page.click("#showValveTable");
+  assert.equal(await page.locator("#fullValveTable .selected-cell").count(), 0);
+  await page.click("#closeValveTable");
+  assert.equal(await page.isVisible("#valveTableDlg"), false);
   assert.deepEqual(errors, []);
   await ctx.close();
 });

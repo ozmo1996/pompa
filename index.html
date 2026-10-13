@@ -298,6 +298,7 @@
             <article class="card valve-card">
               <p class="eyebrow">Armatka 600 ECO</p>
               <h2>Konfiguracja zaworów wodnych</h2>
+              <button id="showValveTable" type="button" class="secondary" aria-haspopup="dialog">Tabela</button>
               <p class="small">
                 Wskazówka z dostarczonej tabeli, nie sterowanie automatyczne. Użyj ciśnienia przy armacie, nie ciśnienia
                 atmosferycznego ani poziomu zbiornika.
@@ -700,6 +701,32 @@
         </p>
       </details>
       <p id="appVersion" class="footer">Pompa · Panel mobilny</p>
+      <dialog id="valveTableDlg" class="valve-table-dialog" aria-labelledby="valveTableTitle">
+        <div class="valve-table-heading">
+          <h2 id="valveTableTitle">Tabela zaworów 600 ECO</h2>
+          <button id="closeValveTable" type="button" class="secondary">Zamknij</button>
+        </div>
+        <p class="small">
+          Temperatura mokrego termometru (°C) w wierszach · ciśnienie wody (bar) w kolumnach. Numery oznaczają zawory do
+          otwarcia.
+        </p>
+        <p id="valveTableSelection" class="small" role="status"></p>
+        <p class="small">Przesuń tabelę w bok, aby zobaczyć pozostałe ciśnienia.</p>
+        <div
+          class="valve-table-scroll"
+          tabindex="0"
+          role="region"
+          aria-label="Pełna tabela konfiguracji zaworów wodnych"
+        >
+          <table id="fullValveTable">
+            <caption class="sr-only">
+              600 ECO: mokry termometr od −1 do −17°C, ciśnienie od 10 do 40 bar
+            </caption>
+            <thead id="valveTableHead"></thead>
+            <tbody id="valveTableBody"></tbody>
+          </table>
+        </div>
+      </dialog>
       <dialog id="confirmDlg" class="confirm" aria-labelledby="dlgTitle">
         <form method="dialog">
           <h2 id="dlgTitle"></h2>

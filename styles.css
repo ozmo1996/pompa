@@ -2183,3 +2183,79 @@ header {
     gap: 12px;
   }
 }
+.valve-table-dialog {
+  width: min(1200px, calc(100% - 28px));
+  max-height: calc(100dvh - 28px);
+  padding: 20px;
+  border: 1px solid #476359;
+  border-radius: 20px;
+  background: #10271f;
+  color: #eef6e9;
+}
+.valve-table-dialog::backdrop {
+  background: rgb(0 0 0 / 75%);
+}
+.valve-table-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.valve-table-heading h2 {
+  margin: 0;
+}
+.valve-table-scroll {
+  overflow: auto;
+  max-height: 62dvh;
+  border: 1px solid #476359;
+  border-radius: 12px;
+}
+#fullValveTable {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  min-width: 1100px;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+#fullValveTable th,
+#fullValveTable td {
+  padding: 12px 9px;
+  text-align: center;
+  white-space: nowrap;
+  border-right: 1px solid #314b40;
+  border-bottom: 1px solid #314b40;
+}
+#fullValveTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #264436;
+}
+#fullValveTable th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #264436;
+}
+#fullValveTable thead th:first-child {
+  z-index: 3;
+}
+#fullValveTable tbody tr:nth-child(even) td {
+  background: #173328;
+}
+#fullValveTable td.selected-cell {
+  background: #d6f48a !important;
+  color: #102319;
+  font-weight: 800;
+  outline: 2px solid #f4ffd9;
+  outline-offset: -3px;
+}
+@media (max-width: 600px) {
+  .valve-table-dialog {
+    padding: 14px;
+  }
+  .valve-table-heading h2 {
+    font-size: 1.15rem;
+  }
+}

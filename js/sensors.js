@@ -15,13 +15,36 @@ import {
   waterVolumeM3,
   tankCapacityM3,
 } from "./logic.js";
-import { $, S, isLive, now, user } from "./state.js";
-import { valveRecommendation } from "./valveTable.js";
+import { $, S, isLive, now, user, el } from "./state.js";
+import { valveRecommendation, PRESSURES, VALVES } from "./valveTable.js";
 
 const { progi: P } = CFG;
 let manualPressure = null;
 const MANUAL_PRESSURE_MS = 15 * 60000;
 export function initSensors() {
+  const head = el("tr", {}, el("th", { scope: "col", textContent: "Mokry °C / bar" }));
+  head.append(...PRESSURES.map((p) => el("th", { scope: "col", textContent: String(p) })));
+  $("valveTableHead").append(head);
+  $("valveTableBody").append(
+    ...VALVES.map((row, index) => {
+      const temperature = -index - 1;
+      const tr = el("tr", {}, el("th", { scope: "row", textContent: String(temperature) }));
+      tr.append(
+        ...row.map((value, column) => {
+          const td = el("td", { textContent: value });
+          td.dataset.temperature = temperature;
+          td.dataset.pressure = PRESSURES[column];
+          return td;
+        }),
+      );
+      return tr;
+    }),
+  );
+  $("showValveTable").addEventListener("click", () => {
+    $("valveTableDlg").showModal();
+    $("valveTableBody .selected-cell")?.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
+  });
+  $("closeValveTable").addEventListener("click", () => $("valveTableDlg").close());
   $("waterPressureForm").addEventListener("submit", (event) => {
     event.preventDefault();
     const bar = parseDecimal($("manualWaterPressure").value);
@@ -62,6 +85,15 @@ function renderValves(wb, fresh) {
         ? "Wpis ręczny wygasł — sprawdź manometr i wpisz ponownie"
         : "Brak odczytu — wpisz ciśnienie z manometru przy armacie";
   const result = fresh ? valveRecommendation(wb, pressure) : null;
+  for (const cell of $("valveTableBody").querySelectorAll("td")) {
+    const selected =
+      !!result &&
+      Number(cell.dataset.temperature) === result.temperature &&
+      Number(cell.dataset.pressure) === result.pressure;
+    cell.classList.toggle("selected-cell", selected);
+    if (selected) cell.setAttribute("aria-current", "true");
+    else cell.removeAttribute("aria-current");
+  }
   $("valveResult").textContent = result ? "Otwórz: " + result.valves.join(" + ") : "Brak wskazówki";
   $("valveBasis").textContent = !fresh
     ? "Potrzebne aktualne dane pogodowe."
@@ -78,6 +110,9 @@ function renderValves(wb, fresh) {
     $("valve" + i).classList.toggle("valve-open", !!open);
     $("valve" + i).textContent = `Zawór ${i}: ${result ? (open ? "otwarty" : "zamknięty") : "—"}`;
   }
+  $("valveTableSelection").textContent = result
+    ? `Zaznaczony punkt: ${result.temperature} °C / ${result.pressure} bar → ${result.valves.join(" + ")}.`
+    : "Brak aktualnego punktu do zaznaczenia — tabelę można przeglądać niezależnie od odczytów.";
 }
 
 function renderHeader() {
