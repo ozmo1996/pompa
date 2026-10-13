@@ -20,7 +20,25 @@ const { progi: P } = CFG;
 function renderHeader() {
   const { status, connected, denied } = S,
     time = Number(status?.aktualizacja),
-    fresh = isFresh(time, now());
+    fresh = isFresh(time, now()),
+    a = S.alarmCfg,
+    low = a
+      ? a.reguly.niskiPoziom.wlaczony &&
+        a.reguly.niskiPoziom.poziom !== "info" &&
+        status?.sondaPolaczona === true &&
+        isNum(status.poziomWodyProc) &&
+        status.poziomWodyProc < a.progi.poziomNiski
+      : status?.alarmPoziomu,
+    cold = a
+      ? status?.temperaturaWodyPolaczona === true &&
+        isNum(status.temperaturaWody) &&
+        ((a.reguly.zamarzanie.wlaczony &&
+          a.reguly.zamarzanie.poziom !== "info" &&
+          status.temperaturaWody <= a.progi.tempAwaria) ||
+          (a.reguly.zimnaWoda.wlaczony &&
+            a.reguly.zimnaWoda.poziom !== "info" &&
+            status.temperaturaWody <= a.progi.tempOstrzezenie))
+      : isNum(status?.temperaturaWody) && status.temperaturaWody <= P.temperaturaZamarzaniaC;
   $("connectionText").textContent = denied
     ? "Brak dostępu"
     : !connected
@@ -43,9 +61,9 @@ function renderHeader() {
         ? "Aplikacja jest połączona z Firebase. Oczekuje na uruchomienie serwisu pomiarowego na Raspberry Pi."
         : !fresh
           ? "Brak świeżych danych. Wyświetlany jest ostatni zapis, a nie potwierdzony bieżący stan."
-          : status.alarmPoziomu
+          : low
             ? "Niski poziom wody — sprawdź zbiornik."
-            : isNum(status.temperaturaWody) && status.temperaturaWody <= P.temperaturaZamarzaniaC
+            : cold
               ? "Temperatura wody bliska zamarzania — sprawdź zbiornik i rurociąg."
               : "";
 }

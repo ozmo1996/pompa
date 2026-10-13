@@ -123,7 +123,15 @@ function onUser(u) {
   subscribe("pompa/ustawienia/pogoda/aktywnaDo", (s) => setWeatherActiveUntil(s.val()));
   subscribe("pompa/polecenie", (s) => onCommandUpdate(s.val()));
   subscribe(q("pompa/alarmy", 300), setAlarms, alarmsDenied);
-  subscribe("pompa/ustawienia/alarmy", setAlarmSettings, alarmSettingsDenied);
+  subscribe(
+    "pompa/ustawienia/alarmy",
+    (s) => {
+      setAlarmSettings(s);
+      render();
+      refreshParamChart();
+    },
+    alarmSettingsDenied,
+  );
   subscribe("pompa/statusAlarmow", setAlarmBackend);
   subscribe("pompa/notatki", setNotes, notesDenied);
   subscribe(q("pompa/zdarzenia", 20), renderEvents, () =>

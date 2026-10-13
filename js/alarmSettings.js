@@ -225,6 +225,7 @@ function renderEditor() {
   renderAlarmSettingsStatus();
 }
 export function resetAlarmSettings() {
+  S.alarmCfg = null;
   saved = A.defaults();
   draft = clone(saved);
   loaded = dirty = denied = busy = false;
@@ -242,6 +243,7 @@ export function setAlarmSettings(snapshot) {
     return;
   }
   saved = { ...value, wlasne: value.wlasne || {} };
+  S.alarmCfg = saved;
   loaded = true;
   denied = false;
   if (!dirty) {

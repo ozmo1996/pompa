@@ -13,6 +13,7 @@ export const S = {
   status: null, // pompa/status
   limitCfg: null, // pompa/ustawienia/limitMocy
   alarms: [],
+  alarmCfg: null,
   connected: false, // .info/connected
   denied: false, // brak uprawnień do odczytu statusu
   serverOffset: 0, // .info/serverTimeOffset — różnica zegara telefonu i serwera

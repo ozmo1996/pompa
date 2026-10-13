@@ -130,6 +130,11 @@ test("Ustawienia alarmów: progi, ważność i własny alert zapisują się; edy
   assert.equal(saved.progi.poziomNiski, 15);
   assert.equal(Object.values(saved.wlasne)[0].prog, 380);
   assert.equal(Object.values(saved.wlasne)[0].pomiar, "nd20.napiecieL1L2");
+  await page.evaluate(() => {
+    globalThis.__fb.set("pompa/status/poziomWodyProc", 10);
+    globalThis.__fb.set("pompa/status/alarmPoziomu", true);
+  });
+  assert.ok(!(await page.textContent("#dataMessage")).includes("Niski poziom"));
   await page.evaluate(
     (id) => globalThis.__fb.set("pompa/statusAlarmow", { wersja: "2.19", aktualizacja: Date.now(), ustawieniaId: id }),
     saved.id,

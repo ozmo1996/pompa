@@ -150,7 +150,11 @@ const PARAMS = {
     now: (s) => s?.temperaturaWody,
     span: 2,
     refs: () => [
-      { v: CFG.progi.temperaturaZamarzaniaC, t: `${CFG.progi.temperaturaZamarzaniaC} °C — ryzyko zamarzania`, c: WARN },
+      {
+        v: S.alarmCfg?.progi.tempOstrzezenie ?? CFG.progi.temperaturaZamarzaniaC,
+        t: `${S.alarmCfg?.progi.tempOstrzezenie ?? CFG.progi.temperaturaZamarzaniaC} °C — próg zimnej wody`,
+        c: WARN,
+      },
     ],
   },
   tPow: {
