@@ -46,7 +46,10 @@ async function verify() {
     headers: { "Content-Type": "application/json" },
     body: "101",
   });
-  if (bad.status !== 403) throw new Error("Błędny próg nie został odrzucony: " + bad.status);
+  if (![401, 403].includes(bad.status)) throw new Error("Błędny próg nie został odrzucony: " + bad.status);
+  const unchanged = await fetch(url);
+  if (!unchanged.ok || (await unchanged.json()).progi.poziomNiski !== next.progi.poziomNiski)
+    throw new Error("Zapisany próg zmienił się podczas negatywnego testu.");
   console.log("BLEDNY_PROG_ODRZUCONY");
   for (let i = 0; i < 10; i++) {
     const applied = (await admin.database().ref("pompa/statusAlarmow").get()).val();
