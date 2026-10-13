@@ -123,6 +123,13 @@ export async function set(r, value) {
   M.writes.push({ op: "set", path: r.path, value: structuredClone(value) });
   M.set(r.path, value);
 }
+export async function runTransaction(r, callback) {
+  if (failing(r.path)) throw permErr();
+  const next = callback(M.read(r.path));
+  if (next === undefined) return { committed: false, snapshot: snapshot(r) };
+  await set(r, next);
+  return { committed: true, snapshot: snapshot(r) };
+}
 export async function update(r, obj) {
   if (failing(r.path)) throw permErr();
   M.writes.push({ op: "update", path: r.path, value: structuredClone(obj) });

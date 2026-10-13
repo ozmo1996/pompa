@@ -19,6 +19,14 @@ import {
 } from "./push.js";
 import { initHeartbeat, setWeatherActiveUntil, startHeartbeat } from "./heartbeat.js";
 import { initNotes, notesDenied, resetNotes, setNotes } from "./notes.js";
+import {
+  initAlarmSettings,
+  resetAlarmSettings,
+  setAlarmSettings,
+  alarmSettingsDenied,
+  setAlarmBackend,
+  renderAlarmSettingsStatus,
+} from "./alarmSettings.js";
 
 const SDK = (name) => `https://www.gstatic.com/firebasejs/${CFG.firebaseSdk}/firebase-${name}.js`;
 
@@ -65,6 +73,7 @@ function onUser(u) {
   resetHistory();
   resetStats();
   resetNotes();
+  resetAlarmSettings();
   closeParamChart();
   stopPush();
   renderAlarms();
@@ -83,6 +92,7 @@ function onUser(u) {
     render();
     renderPush();
     renderAlarms();
+    renderAlarmSettingsStatus();
   });
   subscribe(".info/serverTimeOffset", (s) => {
     S.serverOffset = Number(s.val()) || 0;
@@ -113,6 +123,8 @@ function onUser(u) {
   subscribe("pompa/ustawienia/pogoda/aktywnaDo", (s) => setWeatherActiveUntil(s.val()));
   subscribe("pompa/polecenie", (s) => onCommandUpdate(s.val()));
   subscribe(q("pompa/alarmy", 300), setAlarms, alarmsDenied);
+  subscribe("pompa/ustawienia/alarmy", setAlarmSettings, alarmSettingsDenied);
+  subscribe("pompa/statusAlarmow", setAlarmBackend);
   subscribe("pompa/notatki", setNotes, notesDenied);
   subscribe(q("pompa/zdarzenia", 20), renderEvents, () =>
     $("events").replaceChildren(el("li", { textContent: "Brak dostępu do historii zdarzeń." })),
@@ -186,6 +198,7 @@ async function boot() {
   initNotes();
   initParamChart();
   initAlarms();
+  initAlarmSettings();
   initPush();
   initHeartbeat();
   initLogin();

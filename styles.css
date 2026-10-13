@@ -635,6 +635,90 @@ summary {
   }
 }
 
+.alarm-settings > summary {
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.alarm-settings fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.alarm-setting-group {
+  border: 1px solid #29443a;
+  border-radius: 14px;
+  margin: 12px 0;
+  overflow: hidden;
+}
+.alarm-setting-group > summary {
+  padding: 14px;
+  cursor: pointer;
+  font-weight: 650;
+}
+.alarm-rule {
+  padding: 16px;
+  border-top: 1px solid #29443a;
+}
+.alarm-rule-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+}
+.alarm-rule h3 {
+  font-size: 1rem;
+  margin: 0 0 10px;
+}
+.alarm-setting-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.alarm-setting-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 10px 0;
+  font-size: 0.9rem;
+}
+.alarm-setting-field input:not([type="checkbox"]),
+.alarm-setting-field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  box-sizing: border-box;
+  background: #10251e;
+  color: #ecf4ed;
+  border: 1px solid #486052;
+  border-radius: 9px;
+  padding: 10px;
+  font: inherit;
+}
+.alarm-setting-field input[type="checkbox"] {
+  width: 24px;
+  height: 24px;
+  accent-color: #d6f48a;
+}
+.alarm-settings-actions {
+  padding-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.alarm-settings-actions p {
+  flex-basis: 100%;
+  margin: 0;
+}
+@media (max-width: 420px) {
+  .alarm-setting-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ===== 3. Sterowanie, licznik mocy, okna dialogowe, wykresy parametrów, alarmy, powiadomienia ===== */
 
 .control-grid {

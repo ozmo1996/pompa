@@ -564,6 +564,37 @@
           </details>
         </section>
         <section id="alarmsView" hidden>
+          <details class="card alarm-settings" id="alarmSettingsPanel">
+            <summary>Ustawienia alertów, ostrzeżeń i awarii</summary>
+            <p id="alarmSettingsSummary" class="small"></p>
+            <p class="small">
+              Wybierz reguły, progi i ważność. Ustawienia działają na Raspberry również przy zamkniętej aplikacji.
+              Zmiana ważności dotyczy powiadomień i dziennika, a zabezpieczenia sprzętowe działają niezależnie.
+            </p>
+            <p class="small">
+              Informacja trafia do dziennika; ostrzeżenia i awarie mogą wysyłać push zgodnie z ustawieniami telefonu.
+              „Automatyczna” zachowuje domyślną ważność reguły. Czasy są podane w sekundach.
+            </p>
+            <p id="alarmBackendState" class="notice" role="status"></p>
+            <form id="alarmSettingsForm">
+              <fieldset id="alarmSettingsFields" disabled>
+                <legend class="sr-only">Reguły powiadomień</legend>
+                <div id="alarmRuleGroups"></div>
+                <h3>Własne alerty</h3>
+                <p class="small">
+                  Dowolny dostępny pomiar: woda, temperatura, falownik, ND20 lub pogoda. Reguły korzystają tylko z
+                  aktualnych odczytów.
+                </p>
+                <div id="customAlarmList"></div>
+                <button id="addCustomAlarm" type="button" class="secondary">Dodaj własny alert</button>
+              </fieldset>
+              <div class="alarm-settings-actions">
+                <button id="saveAlarmSettings" type="submit" disabled>Zapisz ustawienia</button>
+                <button id="discardAlarmSettings" type="button" class="secondary" disabled>Wczytaj zapisane</button>
+                <p id="alarmSettingsMessage" class="small" role="status" aria-live="polite"></p>
+              </div>
+            </form>
+          </details>
           <article class="card push-card">
             <h2>Powiadomienia na tym telefonie</h2>
             <p id="pushState" class="small">Sprawdzanie…</p>

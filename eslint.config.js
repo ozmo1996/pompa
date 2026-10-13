@@ -15,7 +15,7 @@ export default [
     files: ["raspberry/*.js"],
     languageOptions: {
       sourceType: "commonjs",
-      globals: { ...browser, require: "readonly", module: "readonly", Buffer: "readonly" },
+      globals: { ...browser, require: "readonly", module: "readonly", Buffer: "readonly", __dirname: "readonly", setImmediate: "readonly", AbortSignal: "readonly", URLSearchParams: "readonly" },
     },
   },
 ];

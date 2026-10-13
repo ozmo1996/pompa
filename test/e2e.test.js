@@ -103,6 +103,68 @@ test("ND20: brak miernika i świeży odczyt są wyraźnie rozróżnione", async 
   await ctx.close();
 });
 
+test("Ustawienia alarmów: progi, ważność i własny alert zapisują się; edycja nie jest nadpisywana statusem", async () => {
+  const { page, ctx, errors } = await open();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#alarmsTab");
+  await page.click("#alarmSettingsPanel > summary");
+  await page.locator(".alarm-setting-group > summary").filter({ hasText: "Woda" }).click();
+  await page.locator('#rule-niskiPoziom input[type="checkbox"]').first().uncheck();
+  await page.locator("#rule-niskiPoziom select").selectOption("info");
+  await page.fill('[data-setting="poziomNiski"]', "15");
+  await page.click("#addCustomAlarm");
+  const custom = page.locator("#customAlarmList .alarm-rule");
+  await custom.getByLabel("Nazwa alertu", { exact: true }).fill("Niskie napięcie agregatu");
+  await custom.getByLabel("Pomiar", { exact: true }).selectOption("nd20.napiecieL1L2");
+  await custom.getByLabel("Próg (V)", { exact: true }).fill("380");
+  await page.evaluate(() => globalThis.__fb.set("pompa/status/temperaturaWody", 9));
+  assert.equal(await page.inputValue('[data-setting="poziomNiski"]'), "15");
+  await page.click("#saveAlarmSettings");
+  await page.waitForFunction(() =>
+    document.getElementById("alarmSettingsMessage").textContent.includes("Ustawienia zapisane"),
+  );
+  const saved = await page.evaluate(() => globalThis.__fb.store.pompa.ustawienia.alarmy);
+  assert.equal(saved.reguly.niskiPoziom.wlaczony, false);
+  assert.equal(saved.reguly.niskiPoziom.poziom, "info");
+  assert.equal(saved.progi.poziomNiski, 15);
+  assert.equal(Object.values(saved.wlasne)[0].prog, 380);
+  assert.equal(Object.values(saved.wlasne)[0].pomiar, "nd20.napiecieL1L2");
+  await page.evaluate(
+    (id) => globalThis.__fb.set("pompa/statusAlarmow", { wersja: "2.19", aktualizacja: Date.now(), ustawieniaId: id }),
+    saved.id,
+  );
+  await page.waitForFunction(() =>
+    document.getElementById("alarmBackendState").textContent.includes("Raspberry stosuje"),
+  );
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("Ustawienia alarmów: błędne progi i konflikt drugiego urządzenia nie nadpisują zapisanych ustawień", async () => {
+  const { page, ctx } = await open();
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#alarmsTab");
+  await page.click("#alarmSettingsPanel > summary");
+  await page.locator(".alarm-setting-group > summary").filter({ hasText: "Woda" }).click();
+  await page.fill('[data-setting="poziomNiski"]', "99");
+  await page.click("#saveAlarmSettings");
+  assert.match(await page.textContent("#alarmSettingsMessage"), /Niski poziom/);
+  assert.equal((await writes(page, "pompa/ustawienia/alarmy")).length, 0);
+  await page.fill('[data-setting="poziomNiski"]', "15");
+  await page.evaluate(async () => {
+    const A = globalThis.POMPA_ALARM_SCHEMA;
+    globalThis.__fb.set("pompa/ustawienia/alarmy", { ...A.defaults(), id: "other-device" });
+  });
+  await page.click("#saveAlarmSettings");
+  await page.waitForFunction(() =>
+    document.getElementById("alarmSettingsMessage").textContent.includes("innym urządzeniu"),
+  );
+  assert.equal((await writes(page, "pompa/ustawienia/alarmy")).length, 0);
+  await ctx.close();
+});
+
 test("notatka z terminem zapisuje się w bazie i można ją oznaczyć jako wykonaną; poziom pokazuje cm", async () => {
   const { page, ctx, errors } = await open();
   await page.waitForSelector("#dashboard:not([hidden])");
