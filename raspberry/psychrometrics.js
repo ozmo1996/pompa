@@ -6,10 +6,13 @@
   function stationPressure(w, fallback = 920) {
     const p = w?.cisnienieStacjiHpa;
     if (finite(p) && p >= 500 && p <= 1100) return p;
-    // PWS Current Conditions v2: `pressure` to ciśnienie na poziomie morza.
-    // 800 m n.p.m. potwierdzone przez właściciela stacji IBYSTR6.
-    const sea = w?.cisnieniePoziomMorzaHpa ?? (w?.stacja === "IBYSTR6" ? w.cisnienie : null);
+    // Jawnie oznaczone ciśnienie na poziomie morza korygujemy na 800 m n.p.m.
+    const sea = w?.cisnieniePoziomMorzaHpa;
     if (finite(sea) && sea >= 850 && sea <= 1100) return sea * Math.pow(1 - (0.0065 * 800) / 288.15, 5.25588);
+    // Właściciel potwierdził: IBYSTR6 wysyła ABS (~943 hPa), nie REL,
+    // mimo opisu ogólnego pola pressure w dokumentacji WU. Bez drugiej korekcji.
+    const abs = w?.stacja === "IBYSTR6" ? w.cisnienie : null;
+    if (finite(abs) && abs >= 500 && abs <= 1100) return abs;
     return fallback;
   }
   function wetBulb(t, rh, p = 920) {

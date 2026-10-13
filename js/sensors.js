@@ -234,12 +234,11 @@ function renderWeather() {
   $("wetBulbMethod").textContent =
     "Obliczenie nad wodą · ciśnienie atmosferyczne " +
     fmt(pressure, " hPa") +
-    (pressure === w?.cisnienieStacjiHpa
-      ? " (pomiar na wysokości stacji)."
-      : isNum(w?.cisnieniePoziomMorzaHpa) ||
-          (w?.stacja === "IBYSTR6" && isNum(w?.cisnienie) && w.cisnienie >= 850 && w.cisnienie <= 1100)
+    (pressure === w?.cisnienieStacjiHpa || (w?.stacja === "IBYSTR6" && pressure === w.cisnienie)
+      ? " (ABS na wysokości stacji · 800 m n.p.m.)."
+      : isNum(w?.cisnieniePoziomMorzaHpa)
         ? " (przeliczone z poziomu morza na 800 m n.p.m.)."
-        : " (przyjęte; brak danych o ciśnieniu).");
+        : " (przyjęte; brak pomiaru ciśnienia ABS).");
   $("weatherHumidity").textContent = fmt(w?.wilgotnosc, " %", 0);
   $("weatherPressure").textContent = fmt(w?.cisnienie, " hPa", 1);
   $("weatherWind").textContent = fmt(w?.wiatr, " km/h", 1);

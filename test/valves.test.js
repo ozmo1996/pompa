@@ -52,6 +52,7 @@ test("Mokry termometr: punkty referencyjne, nasycenie, monotoniczność i ciśni
   assert.equal(wetBulb(2, 60, 0), null);
   assert.equal(wetBulb(-100, 60), null);
   assert.equal(stationPressure({ cisnienie: 1016 }), 920);
-  assert.ok(Math.abs(stationPressure({ stacja: "IBYSTR6", cisnienie: 1013.25 }) - 920.8) < 0.5);
+  assert.equal(stationPressure({ stacja: "IBYSTR6", cisnienie: 943.21 }), 943.21);
+  assert.ok(Math.abs(stationPressure({ cisnieniePoziomMorzaHpa: 1013.25 }) - 920.8) < 0.5);
   assert.equal(stationPressure({ cisnienieStacjiHpa: 930 }), 930);
 });
