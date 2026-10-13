@@ -35,7 +35,7 @@ async function verify() {
     config = current || schema.defaults();
   const validation = schema.validate(config);
   if (validation) throw new Error(validation);
-  const next = { ...config, id: crypto.randomUUID(), zmieniono: Date.now(), zmienil: user.email };
+  let next = { ...config, id: crypto.randomUUID(), zmieniono: Date.now(), zmienil: user.email };
   const headers = { "Content-Type": "application/json" };
   if (read.headers.get("etag")) headers["if-match"] = read.headers.get("etag");
   const write = await fetch(url, { method: "PUT", headers, body: JSON.stringify(next) });
@@ -51,6 +51,55 @@ async function verify() {
   if (!unchanged.ok || (await unchanged.json()).progi.poziomNiski !== next.progi.poziomNiski)
     throw new Error("Zapisany próg zmienił się podczas negatywnego testu.");
   console.log("BLEDNY_PROG_ODRZUCONY");
+  if (process.argv.includes("--custom")) {
+    const before = await fetch(url, { headers: { "X-Firebase-ETag": "true" } });
+    const baseline = await before.json();
+    if (!before.ok || baseline.id !== next.id || !before.headers.get("etag"))
+      throw new Error("Przerwano test własnego alertu: równoległa zmiana lub brak ETag.");
+    const slot = Array.from({ length: 30 }, (_, i) => "rule_" + (i + 1)).find((k) => !baseline.wlasne?.[k]);
+    if (!slot) throw new Error("Brak wolnego miejsca na wyłączoną regułę testową.");
+    const candidate = {
+      ...baseline,
+      id: crypto.randomUUID(),
+      zmieniono: Date.now(),
+      wlasne: {
+        ...baseline.wlasne,
+        [slot]: {
+          tytul: "Kontrola zapisu (wyłączona)",
+          pomiar: "nd20.napiecieL1L2",
+          operator: "lt",
+          prog: 380,
+          tylkoPraca: false,
+          wlaczony: false,
+          poziom: "ostrzezenie",
+          push: false,
+          opoznienieS: 20,
+          zakonczenieS: 60,
+        },
+      },
+    };
+    const testWrite = await fetch(url, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "if-match": before.headers.get("etag"),
+        "X-Firebase-ETag": "true",
+      },
+      body: JSON.stringify(candidate),
+    });
+    if (!testWrite.ok) throw new Error("Zapis własnej reguły: " + testWrite.status);
+    const restore = { ...baseline, id: crypto.randomUUID(), zmieniono: Date.now() };
+    if (!testWrite.headers.get("etag"))
+      throw new Error("Brak ETag po zapisie reguły — nie nadpisano możliwych równoległych zmian.");
+    const restored = await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "if-match": testWrite.headers.get("etag") },
+      body: JSON.stringify(restore),
+    });
+    if (!restored.ok) throw new Error("Przywrócenie po teście: " + restored.status);
+    next = restore;
+    console.log("WLASNA_REGULA_ZAPIS_OK_PRZYWROCONO_USTAWIENIA");
+  }
   for (let i = 0; i < 10; i++) {
     const applied = (await admin.database().ref("pompa/statusAlarmow").get()).val();
     if (applied?.ustawieniaId === next.id && Date.now() - applied.aktualizacja < 90000) {
