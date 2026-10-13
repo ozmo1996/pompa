@@ -33,6 +33,8 @@ const SHELL = [
   "js/alarms.js",
   "js/alarmSettings.js",
   "raspberry/alarm-schema.js",
+  "raspberry/psychrometrics.js",
+  "js/valveTable.js",
   "js/push.js",
   "js/heartbeat.js",
   "js/notes.js",

@@ -6,6 +6,7 @@
 const path = require("path");
 const admin = require("firebase-admin");
 const schema = require("./alarm-schema");
+const { wetBulb, stationPressure } = require("./psychrometrics");
 let settings = schema.defaults();
 const ruleFor = (typ) => (typ.startsWith("wlasny_") ? settings.wlasne?.[typ.slice(7)] : settings.reguly[typ]);
 
@@ -66,21 +67,6 @@ let status = null,
 let lastStopCmdAt = 0;
 const seenCommands = new Set();
 
-// temperatura termometru mokrego (psychrometrycznie, nad lodem poniżej 0 °C), ciśnienie stacji ~920 hPa
-function wetBulb(t, rh, p = 920) {
-  if (!num(t) || !num(rh) || rh <= 0 || rh > 100) return null;
-  const es = (x) =>
-    x < 0 ? 6.112 * Math.exp((22.46 * x) / (272.62 + x)) : 6.112 * Math.exp((17.62 * x) / (243.12 + x));
-  const e = (rh / 100) * 6.112 * Math.exp((17.62 * t) / (243.12 + t));
-  let lo = t - 40,
-    hi = t;
-  for (let i = 0; i < 40; i++) {
-    const m = (lo + hi) / 2;
-    if (es(m) - (m < 0 ? 5.84e-4 : 6.62e-4) * p * (t - m) - e > 0) hi = m;
-    else lo = m;
-  }
-  return (lo + hi) / 2;
-}
 function kw(s) {
   if (num(s?.moc)) return s.moc;
   if (s?.pracuje && num(s?.prad) && num(s?.napiecie)) return (Math.sqrt(3) * s.napiecie * s.prad * 0.91) / 1000;
@@ -392,7 +378,7 @@ function evaluate() {
   const w = s.pogoda,
     wt = Number(w?.czasPomiaru || w?.pobrano),
     wFresh = num(wt) && t - wt < P.pogodaWaznaMin * 60000;
-  const wb = wFresh ? wetBulb(w.temperatura, w.wilgotnosc) : null;
+  const wb = wFresh ? wetBulb(w.temperatura, w.wilgotnosc, stationPressure(w)) : null;
   cond("pogodaNieaktualna", !wFresh, () => ({
     poziom: "ostrzezenie",
     tytul: "Brak aktualnych danych pogodowych",
@@ -502,7 +488,7 @@ async function applySettings(value) {
 function reportSettings() {
   return db
     .ref("pompa/statusAlarmow")
-    .update({ wersja: "2.20", aktualizacja: now(), ustawieniaId: settings.id || "domyslne" });
+    .update({ wersja: "2.21", aktualizacja: now(), ustawieniaId: settings.id || "domyslne" });
 }
 
 // ---------- powiadomienia push ----------

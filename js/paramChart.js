@@ -1,5 +1,16 @@
 // Okno z wykresem pojedynczego parametru z zakładki „Czujniki” (ostatnie 6 godzin).
-import { CFG, fmt, isFresh, isNum, niceStep, powerReading, rowPower, waterVolumeM3, wetBulb } from "./logic.js";
+import {
+  CFG,
+  fmt,
+  isFresh,
+  isNum,
+  niceStep,
+  powerReading,
+  rowPower,
+  waterVolumeM3,
+  wetBulb,
+  stationPressure,
+} from "./logic.js";
 import { weatherHistory, workHistory } from "./history.js";
 import { $, S, isLive, now, safe, user } from "./state.js";
 
@@ -9,7 +20,7 @@ const { silnik: M } = CFG,
   COLORS = { Falownik: "#d6f48a", Zbiornik: "#4cc9e8", Pogoda: "#a9b8ff", Agregat: "#f0c995" },
   WARN = "#f0c995";
 const pw = (r) => r?.pogoda || {};
-const wb = (w) => wetBulb(w?.temperatura, w?.wilgotnosc);
+const wb = (w) => wetBulb(w?.temperatura, w?.wilgotnosc, stationPressure(w));
 
 /**
  * g — grupa, n — nazwa, u — jednostka, d — miejsca po przecinku, pole — nazwa pola w historii (do komunikatu),
@@ -189,8 +200,8 @@ const PARAMS = {
     span: 2,
     refs: () => [
       {
-        v: CFG.progi.termometrMokryMaxC,
-        t: `${fmt(CFG.progi.termometrMokryMaxC).replace("-", "−")} °C — granica śniegu`,
+        v: S.alarmCfg?.progi.mokryMaxC ?? CFG.progi.termometrMokryMaxC,
+        t: `${fmt(S.alarmCfg?.progi.mokryMaxC ?? CFG.progi.termometrMokryMaxC).replace("-", "−")} °C — próg ostrzeżenia`,
         c: WARN,
       },
     ],

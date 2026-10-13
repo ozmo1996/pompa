@@ -1,7 +1,7 @@
 // Start aplikacji: ładowanie Firebase, logowanie, subskrypcje bazy i odświeżanie widoków.
 import { CFG } from "./logic.js";
 import { $, S, VIEWS, dbRef, el, fb, isLive, safe, showView } from "./state.js";
-import { renderSensors } from "./sensors.js";
+import { renderSensors, initSensors } from "./sensors.js";
 import { fillLimit, initControl, onCommandUpdate, renderControl, resetControl, syncFromStatus } from "./control.js";
 import { initStats, resetStats } from "./stats.js";
 import { resetHistory } from "./history.js";
@@ -202,6 +202,7 @@ async function boot() {
   if ("serviceWorker" in navigator && isSecureContext) registerSW().catch(() => {});
   for (const v of VIEWS) $(v + "Tab").addEventListener("click", () => showView(v));
   initControl();
+  initSensors();
   initStats();
   initNotes();
   initParamChart();

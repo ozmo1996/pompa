@@ -2129,3 +2129,57 @@ header {
     letter-spacing: -0.2px;
   }
 }
+.valve-card {
+  grid-column: 1 / -1;
+}
+.valve-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 18px 0;
+}
+.valve-summary small,
+.valve-summary b {
+  display: block;
+}
+.valve-summary b {
+  font-size: 1.45rem;
+  margin-top: 6px;
+}
+.valve-pressure-input {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.valve-pressure-input input {
+  flex: 1 1 130px;
+  min-width: 0;
+}
+.valve-states {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 20px 0;
+}
+.valve-states span {
+  padding: 16px 10px;
+  border: 1px solid #476359;
+  border-radius: 12px;
+  text-align: center;
+  color: #aabfb6;
+}
+.valve-states .valve-open {
+  color: #102319;
+  background: #d6f48a;
+  border-color: #d6f48a;
+  font-weight: 700;
+}
+@media (max-width: 600px) {
+  .valve-states {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .valve-summary {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}

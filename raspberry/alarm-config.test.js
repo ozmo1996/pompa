@@ -37,7 +37,15 @@ function service({ failCloses = 0 } = {}) {
   const context = vm.createContext({
     module: { exports: {} },
     require: (name) =>
-      name === "firebase-admin" ? admin : name === "path" ? path : name === "./alarm-schema" ? A : {},
+      name === "firebase-admin"
+        ? admin
+        : name === "path"
+          ? path
+          : name === "./alarm-schema"
+            ? A
+            : name === "./psychrometrics"
+              ? require("./psychrometrics")
+              : {},
     __dirname: __dirname,
     process: { env: {}, on() {} },
     Date: class extends Date {

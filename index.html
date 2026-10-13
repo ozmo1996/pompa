@@ -262,6 +262,7 @@
                   <div class="weather-poll">
                     Pogoda: 10 min na postoju · 5 min w pracy · 30 s przy otwartej aplikacji
                   </div>
+                  <p id="wetBulbMethod" class="small"></p>
                 </div>
                 <div class="weather-metrics">
                   <div class="weather-metric" data-param="wilg">
@@ -292,6 +293,49 @@
                     <b id="weatherSolar">— W/m²</b><small>Promieniowanie</small>
                   </div>
                 </div>
+              </details>
+            </article>
+            <article class="card valve-card">
+              <p class="eyebrow">Armatka 600 ECO</p>
+              <h2>Konfiguracja zaworów wodnych</h2>
+              <p class="small">
+                Wskazówka z dostarczonej tabeli, nie sterowanie automatyczne. Użyj ciśnienia przy armacie, nie ciśnienia
+                atmosferycznego ani poziomu zbiornika.
+              </p>
+              <div class="valve-summary">
+                <div><small>Ciśnienie wody</small><b id="valvePressure">— bar</b></div>
+                <div><small>Zalecana konfiguracja</small><b id="valveResult" role="status">Brak wskazówki</b></div>
+              </div>
+              <p id="valvePressureSource" class="small"></p>
+              <form id="waterPressureForm">
+                <label for="manualWaterPressure">Ciśnienie z manometru (bar)</label>
+                <div class="valve-pressure-input">
+                  <input
+                    id="manualWaterPressure"
+                    type="text"
+                    inputmode="decimal"
+                    placeholder="np. 32"
+                    autocomplete="off"
+                  /><button type="submit">Użyj pomiaru</button
+                  ><button id="clearWaterPressure" type="button" class="secondary">Wyczyść</button>
+                </div>
+                <p id="waterPressureMessage" class="small" role="status">
+                  Wpis ręczny obowiązuje 15 minut i tylko na tym urządzeniu.
+                </p>
+              </form>
+              <div class="valve-states">
+                <span id="valve1">Zawór 1: —</span><span id="valve2">Zawór 2: —</span><span id="valve3">Zawór 3: —</span
+                ><span id="valve4">Zawór 4: —</span>
+              </div>
+              <p id="valveBasis" class="small"></p>
+              <details>
+                <summary>Jak dobierana jest konfiguracja?</summary>
+                <p class="small">
+                  Zakres tabeli: −1 do −17°C i 10–40 bar. Między punktami wybieramy cieplejszy pełny stopień i wyższą
+                  kolumnę ciśnienia (np. −5,6°C / 31 bar → −5°C / 32 bar). Poniżej −17°C pozostaje ostatni wiersz. Poza
+                  zakresem ciśnienia lub bez aktualnej pogody nie podajemy konfiguracji. Sprawdź jakość śniegu po
+                  zmianie zaworów; tabela dotyczy wyłącznie 600 ECO.
+                </p>
               </details>
             </article>
           </div>

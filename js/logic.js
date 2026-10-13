@@ -1,5 +1,6 @@
 // Czysta logika aplikacji — bez DOM i bez Firebase, dzięki czemu jest testowana jednostkowo (test/logic.test.js).
 import "../config.js";
+import "../raspberry/psychrometrics.js";
 
 export const CFG = globalThis.POMPA_CONFIG;
 const { silnik: M, progi: P } = CFG;
@@ -47,21 +48,10 @@ export function duration(ms) {
 
 // ---------- pogoda ----------
 
-/** Temperatura termometru mokrego (psychrometrycznie, nad lodem poniżej 0 °C). */
+export const stationPressure = (w) => globalThis.POMPA_PSYCHROMETRICS.stationPressure(w, P.cisnienieStacjiHpa);
+/** Mokry termometr nad wodą — ta sama metoda co w alarmach Raspberry. */
 export function wetBulb(t, rh, p = P.cisnienieStacjiHpa) {
-  if (!isNum(t) || !isNum(rh) || rh <= 0 || rh > 100) return null;
-  const es = (x) =>
-      x < 0 ? 6.112 * Math.exp((22.46 * x) / (272.62 + x)) : 6.112 * Math.exp((17.62 * x) / (243.12 + x)),
-    e = (rh / 100) * 6.112 * Math.exp((17.62 * t) / (243.12 + t));
-  let lo = t - 40,
-    hi = t;
-  for (let i = 0; i < 40; i++) {
-    const m = (lo + hi) / 2,
-      f = es(m) - (m < 0 ? 5.84e-4 : 6.62e-4) * p * (t - m) - e;
-    if (f > 0) hi = m;
-    else lo = m;
-  }
-  return (lo + hi) / 2;
+  return globalThis.POMPA_PSYCHROMETRICS.wetBulb(t, rh, p);
 }
 
 const DIRS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];

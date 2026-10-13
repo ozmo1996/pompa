@@ -57,6 +57,66 @@ async function open({ data, seed = {}, clockSkew = 0, sdkFails = false, clock = 
 }
 const writes = (page, p) => page.evaluate((p) => globalThis.__fb.writes.filter((w) => w.path === p), p);
 
+test("600 ECO: ciśnienie ręczne, czujnik, wygaśnięcie i nieaktualna pogoda", async () => {
+  const { page, ctx, errors } = await open({ clock: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.evaluate(() =>
+    globalThis.__fb.set("pompa/status/pogoda", {
+      stacja: "IBYSTR6",
+      pobrano: Date.now(),
+      temperatura: -5,
+      wilgotnosc: 100,
+      cisnienie: 1013.25,
+    }),
+  );
+  await page.fill("#manualWaterPressure", "31,0");
+  await page.locator("#waterPressureForm button[type=submit]").click();
+  assert.equal(await page.textContent("#valveResult"), "Otwórz: 1 + 3");
+  assert.match(await page.textContent("#valveBasis"), /−?\-?5 °C \/ 32 bar/);
+  assert.match(await page.textContent("#wetBulbMethod"), /800 m/);
+  assert.equal(await page.locator("#valve2").textContent(), "Zawór 2: zamknięty");
+  if (process.env.POMPA_VALVE_CAPTURE)
+    await page.locator(".valve-card").screenshot({ path: process.env.POMPA_VALVE_CAPTURE });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  await page.evaluate(() =>
+    globalThis.__fb.set("pompa/status/cisnienieTloczenia", { bar: 40, polaczony: true, aktualizacja: Date.now() }),
+  );
+  await page.waitForFunction(() => document.getElementById("valvePressure").textContent === "40 bar");
+  assert.equal(await page.isVisible("#waterPressureForm"), false);
+  assert.equal(await page.textContent("#valveResult"), "Otwórz: 3");
+  await page.evaluate(() => globalThis.__fb.set("pompa/status/cisnienieTloczenia/bar", 45));
+  await page.waitForFunction(() => document.getElementById("valveResult").textContent === "Brak wskazówki");
+  await page.clock.fastForward(16 * 60000);
+  await page.evaluate(() => globalThis.__fb.set("pompa/status/pogoda/pobrano", Date.now()));
+  await page.waitForFunction(() => document.getElementById("valvePressureSource").textContent.includes("wygasł"));
+  assert.equal(await page.textContent("#valveResult"), "Brak wskazówki");
+  await page.fill("#manualWaterPressure", "32");
+  await page.locator("#waterPressureForm button[type=submit]").click();
+  await page.evaluate(() => globalThis.__fb.set("pompa/status/pogoda/pobrano", Date.now() - 13 * 60000));
+  await page.waitForFunction(() => document.getElementById("valveBasis").textContent.includes("aktualne dane"));
+  assert.equal(await page.textContent("#valveResult"), "Brak wskazówki");
+  assert.equal((await writes(page, "pompa/polecenie")).length, 0);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("Mokry termometr: kolor korzysta z ustawionego progu i włączenia reguły", async () => {
+  const { page, ctx, errors } = await open();
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#alarmsTab");
+  await page.click("#alarmSettingsPanel > summary");
+  await page.fill("#alarmRuleSearch", "ciepło");
+  await page.locator('#rule-zaCieplo input[data-setting="mokryMaxC"]').fill("-10");
+  await page.click("#saveAlarmSettings");
+  await page.waitForFunction(() => document.getElementById("weatherWet").classList.contains("warm"));
+  await page.locator("#rule-zaCieplo input[type=checkbox]").first().uncheck();
+  await page.click("#saveAlarmSettings");
+  await page.waitForFunction(() => !document.getElementById("weatherWet").classList.contains("warm"));
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
 test("pracująca pompa: wszystkie zakładki działają bez błędów", async () => {
   const { page, ctx, errors } = await open();
   await page.waitForSelector("#dashboard:not([hidden])");

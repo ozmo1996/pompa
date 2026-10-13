@@ -9,13 +9,76 @@ import {
   powerReading,
   weatherTime,
   wetBulb,
+  stationPressure,
+  parseDecimal,
   windDirection,
   waterVolumeM3,
   tankCapacityM3,
 } from "./logic.js";
-import { $, S, isLive, now } from "./state.js";
+import { $, S, isLive, now, user } from "./state.js";
+import { valveRecommendation } from "./valveTable.js";
 
 const { progi: P } = CFG;
+let manualPressure = null;
+const MANUAL_PRESSURE_MS = 15 * 60000;
+export function initSensors() {
+  $("waterPressureForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const bar = parseDecimal($("manualWaterPressure").value);
+    if (!isNum(bar) || bar < 0 || bar > 40) {
+      $("waterPressureMessage").textContent = "Wpisz ciśnienie wody od 0 do 40 bar.";
+      return;
+    }
+    manualPressure = { bar, time: now(), uid: user()?.uid };
+    $("waterPressureMessage").textContent = "Pomiar ręczny ważny przez 15 minut. Zaktualizuj go po zmianie ciśnienia.";
+    renderWeather();
+  });
+  $("clearWaterPressure").addEventListener("click", () => {
+    manualPressure = null;
+    $("manualWaterPressure").value = "";
+    $("waterPressureMessage").textContent = "Pomiar ręczny usunięty.";
+    renderWeather();
+  });
+}
+function renderValves(wb, fresh) {
+  const sensor = S.status?.cisnienieTloczenia;
+  const sensorFresh =
+    S.connected &&
+    !S.denied &&
+    sensor?.polaczony === true &&
+    isFresh(sensor.aktualizacja, now()) &&
+    isNum(sensor.bar) &&
+    sensor.bar >= 0;
+  const manualFresh =
+    manualPressure && manualPressure.uid === user()?.uid && isFresh(manualPressure.time, now(), MANUAL_PRESSURE_MS);
+  const pressure = sensorFresh ? sensor.bar : manualFresh ? manualPressure.bar : null;
+  $("waterPressureForm").hidden = sensorFresh;
+  $("valvePressure").textContent = fmt(pressure, " bar");
+  $("valvePressureSource").textContent = sensorFresh
+    ? "Aktualny pomiar czujnika"
+    : manualFresh
+      ? "Wpis ręczny · " + new Date(manualPressure.time).toLocaleTimeString("pl-PL")
+      : manualPressure
+        ? "Wpis ręczny wygasł — sprawdź manometr i wpisz ponownie"
+        : "Brak odczytu — wpisz ciśnienie z manometru przy armacie";
+  const result = fresh ? valveRecommendation(wb, pressure) : null;
+  $("valveResult").textContent = result ? "Otwórz: " + result.valves.join(" + ") : "Brak wskazówki";
+  $("valveBasis").textContent = !fresh
+    ? "Potrzebne aktualne dane pogodowe."
+    : !isNum(wb)
+      ? "Brak poprawnej temperatury lub wilgotności."
+      : pressure === null
+        ? "Wpisz ciśnienie wody, aby dobrać zawory."
+        : !result
+          ? "Poza zakresem tabeli: mokry termometr musi mieć ≤ −1°C, a ciśnienie 10–40 bar."
+          : `Tabela: ${result.temperature} °C / ${result.pressure} bar · mokry termometr ${fmt(wb, " °C")}.` +
+            (result.coldEnd ? " Poniżej −17°C użyto ostatniego wiersza." : "");
+  for (let i = 1; i <= 4; i++) {
+    const open = result?.valves.includes(i);
+    $("valve" + i).classList.toggle("valve-open", !!open);
+    $("valve" + i).textContent = `Zawór ${i}: ${result ? (open ? "otwarty" : "zamknięty") : "—"}`;
+  }
+}
 
 function renderHeader() {
   const { status, connected, denied } = S,
@@ -146,8 +209,9 @@ function renderWater() {
 function renderWeather() {
   const w = S.status?.pogoda || null,
     t = weatherTime(w),
-    fresh = isFresh(t, now(), P.swiezoscPogodyMs),
-    wb = wetBulb(w?.temperatura, w?.wilgotnosc);
+    fresh = S.connected && !S.denied && isFresh(t, now(), P.swiezoscPogodyMs),
+    pressure = stationPressure(w),
+    wb = wetBulb(w?.temperatura, w?.wilgotnosc, pressure);
   $("weatherStation").textContent = w?.stacja || CFG.pogoda.stacjaDomyslna;
   $("weatherTime").textContent = isNum(t)
     ? "Pomiar: " + new Date(t).toLocaleString("pl-PL")
@@ -158,7 +222,24 @@ function renderWeather() {
   $("weatherTemp").textContent = fmt(w?.temperatura);
   $("weatherFeels").textContent = "Odczuwalna: " + fmt(w?.odczuwalna, " °C");
   $("weatherWet").textContent = "Termometr mokry: " + fmt(wb, " °C");
-  $("weatherWet").classList.toggle("warm", fresh && isNum(wb) && wb > P.termometrMokryMaxC);
+  const rule = S.alarmCfg?.reguly.zaCieplo;
+  $("weatherWet").classList.toggle(
+    "warm",
+    fresh &&
+      isNum(wb) &&
+      (rule?.wlaczony ?? true) &&
+      (rule?.poziom ?? "ostrzezenie") !== "info" &&
+      wb > (S.alarmCfg?.progi.mokryMaxC ?? P.termometrMokryMaxC),
+  );
+  $("wetBulbMethod").textContent =
+    "Obliczenie nad wodą · ciśnienie atmosferyczne " +
+    fmt(pressure, " hPa") +
+    (pressure === w?.cisnienieStacjiHpa
+      ? " (pomiar na wysokości stacji)."
+      : isNum(w?.cisnieniePoziomMorzaHpa) ||
+          (w?.stacja === "IBYSTR6" && isNum(w?.cisnienie) && w.cisnienie >= 850 && w.cisnienie <= 1100)
+        ? " (przeliczone z poziomu morza na 800 m n.p.m.)."
+        : " (przyjęte; brak danych o ciśnieniu).");
   $("weatherHumidity").textContent = fmt(w?.wilgotnosc, " %", 0);
   $("weatherPressure").textContent = fmt(w?.cisnienie, " hPa", 1);
   $("weatherWind").textContent = fmt(w?.wiatr, " km/h", 1);
@@ -167,6 +248,7 @@ function renderWeather() {
   $("weatherRain").textContent = fmt(w?.opadDzienny, " mm", 1);
   $("weatherUv").textContent = fmt(w?.uv, "", 1);
   $("weatherSolar").textContent = fmt(w?.promieniowanie, " W/m²", 0);
+  renderValves(wb, fresh);
 }
 
 export function renderSensors(live) {
