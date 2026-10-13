@@ -231,6 +231,10 @@ test("Alarmy na telefonie: wyszukiwanie i zapis dostępny podczas przewijania, g
   assert.equal(await page.isVisible("#rule-przelew"), false);
   await page.locator("#rule-zimnaWoda select").selectOption("info");
   await page.mouse.wheel(0, 400);
+  await page.waitForFunction(() => {
+    const r = document.querySelector(".alarm-settings-actions").getBoundingClientRect();
+    return r.y >= 0 && r.bottom <= window.innerHeight + 2;
+  });
   const bar = await page.locator(".alarm-settings-actions").boundingBox();
   assert.ok(bar.y >= 0 && bar.y + bar.height <= 846);
   await page.click("#saveAlarmSettings");
