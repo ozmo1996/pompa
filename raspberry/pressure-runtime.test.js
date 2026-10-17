@@ -13,9 +13,10 @@ function setup(t, { offline = false, failStop = 0 } = {}) {
     stops = 0;
   const pending = () => (offline ? new Promise(() => {}) : Promise.resolve());
   const db = {
-    ref: () => ({
+    ref: (name) => ({
       on: (_, cb) => {
-        listener = cb;
+        if (name.endsWith("/zabezpieczenieWody")) cb({ val: () => null });
+        else listener = cb;
       },
       update: pending,
       push: pending,

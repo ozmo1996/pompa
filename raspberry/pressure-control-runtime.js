@@ -2,6 +2,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { PressureController } = require("./pressure-controller");
+const { WaterSafety } = require("./water-safety");
 class PressureRuntime {
   constructor(db, options) {
     this.db = db;
@@ -14,6 +15,7 @@ class PressureRuntime {
     this.wasOn = false;
     this.configRead = false;
     this.backendBusy = false;
+    this.water = new WaterSafety(db, options);
     this.file = path.join(options.dir, "pressure-control-state.json");
     try {
       const v = JSON.parse(fs.readFileSync(this.file, "utf8"));
@@ -92,6 +94,18 @@ class PressureRuntime {
     }
   }
   watchdog() {
+    this.water.check(this.o.state());
+    if (this.water.stopNeeded && !this.waterStopping) {
+      this.waterStopping = true;
+      this.serial(async () => {
+        try {
+          await this.stopWater();
+        } finally {
+          this.waterStopping = false;
+        }
+      }).catch(() => {});
+    }
+    this.water.publish();
     const e = this.engine;
     if (e.cfg.wlaczony && e.armed && !e.pressure(this.o.state()?.cisnienieTloczenia, Date.now()))
       this.trip("Utrata lub błędny odczyt ciśnienia (ponad 3 s)");
@@ -107,22 +121,30 @@ class PressureRuntime {
   }
   prepareCommand(p, s, limit) {
     if (p?.akcja === "stop") {
+      this.water.startingUntil = 0;
       this.engine.stopped();
       return p;
     }
     if (p?.akcja === "start") {
+      const waterError = this.water.validateStart(s);
+      if (waterError) throw new Error(waterError);
       const error = this.engine.validateStart(s, limit.cfg, Date.now());
       if (error) throw new Error(error);
       return this.engine.cfg.wlaczony ? { ...p, czestotliwosc: this.engine.cfg.minHz } : p;
     }
     if (p?.akcja === "czestotliwosc" && (this.engine.cfg.wlaczony || this.engine.fault))
       throw new Error("Ręczne Hz zablokowane — wyłącz regulator i usuń blokadę");
+    if (p?.akcja === "czestotliwosc" && this.water.fault) throw new Error("Blokada zabezpieczenia wody");
     return p;
   }
   started() {
+    this.water.startingUntil = Date.now() + 5000;
+    this.water.running = true;
     this.engine.started(Date.now());
   }
   async beforeStart(state, limit, plannedHz, writeHz) {
+    const waterError = this.water.validateStart(state);
+    if (waterError) throw new Error(waterError);
     const error = this.engine.validateStart(state, limit.cfg, Date.now());
     if (error) throw new Error(error);
     if (this.engine.cfg.wlaczony && plannedHz !== this.engine.cfg.minHz) await writeHz(this.engine.cfg.minHz);
@@ -133,6 +155,10 @@ class PressureRuntime {
   }
   async control(d, s, limit) {
     this.lastState = d;
+    if (this.water.check({ ...s, ...d })) {
+      if (this.water.stopNeeded) await this.stopWater();
+      return { hz: null };
+    }
     const e = this.engine,
       enabled = e.cfg.wlaczony;
     if (!e.loaded) return { hz: null };
@@ -187,6 +213,19 @@ class PressureRuntime {
       .finally(() => {
         this.backendBusy = false;
       });
+  }
+  async stopWater() {
+    if (!this.water.stopNeeded) return;
+    try {
+      await this.o.stop();
+      this.o.limit.ustawCel(null);
+      this.engine.stopped();
+      this.water.startingUntil = 0;
+      this.water.stopNeeded = false;
+    } catch (e) {
+      this.o.log("Woda: STOP niepotwierdzony — ponawiam", e.message);
+      throw e;
+    }
   }
 }
 module.exports = { PressureRuntime };

@@ -1,5 +1,6 @@
 // Start aplikacji: ładowanie Firebase, logowanie, subskrypcje bazy i odświeżanie widoków.
 import { CFG } from "./logic.js";
+import { initWaterSafety, resetWaterSafety, setWaterSafety } from "./waterSafety.js";
 import { $, S, VIEWS, dbRef, el, fb, isLive, safe, showView } from "./state.js";
 import { renderSensors, initSensors } from "./sensors.js";
 import {
@@ -78,6 +79,7 @@ function onUser(u) {
   Object.assign(S, { status: null, limitCfg: null, alarms: [], connected: false, denied: false });
   resetControl();
   resetPressureControl();
+  resetWaterSafety();
   resetHistory();
   resetStats();
   resetNotes();
@@ -142,6 +144,21 @@ function onUser(u) {
   );
   subscribe("pompa/statusRegulatoraCisnienia", (s) => {
     setPressureBackend(s.val());
+    render();
+  });
+  subscribe(
+    "pompa/ustawienia/zabezpieczenieWody",
+    (s) => {
+      setWaterSafety(s.val());
+      render();
+    },
+    () => {
+      setWaterSafety(null, false, true);
+      render();
+    },
+  );
+  subscribe("pompa/statusZabezpieczeniaWody", (s) => {
+    setWaterSafety(s.val(), true);
     render();
   });
   subscribe("pompa/polecenie", (s) => onCommandUpdate(s.val()));
@@ -226,6 +243,7 @@ async function boot() {
   for (const v of VIEWS) $(v + "Tab").addEventListener("click", () => showView(v));
   initControl();
   initPressureControl();
+  initWaterSafety();
   initSensors();
   initStats();
   initNotes();

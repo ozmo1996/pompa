@@ -57,6 +57,68 @@ async function open({ data, seed = {}, clockSkew = 0, sdkFails = false, clock = 
 }
 const writes = (page, p) => page.evaluate((p) => globalThis.__fb.writes.filter((w) => w.path === p), p);
 
+test("Zabezpieczenie wody: niezależne opcje, walidacja, cm/% i zapis bez rozruchu", async () => {
+  const { page, ctx, errors } = await open();
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#controlTab");
+  assert.equal(await page.isChecked("#waterStopOn"), false);
+  await page.check("#waterStopOn");
+  await page.check("#waterWarnOn");
+  await page.fill("#waterStopCm", "40");
+  await page.fill("#waterWarnCm", "42");
+  await page.click("#saveWaterSafety");
+  assert.match(await page.textContent("#waterSafetyMessage"), /co najmniej 5 cm/);
+  await page.fill("#waterWarnCm", "60");
+  page.once("dialog", (d) => d.accept());
+  await page.click("#saveWaterSafety");
+  await page.waitForFunction(() => globalThis.__fb.store.pompa.ustawienia.zabezpieczenieWody?.stopCm === 40);
+  assert.match(await page.textContent("#waterSafetyPercents"), /16.*24/);
+  assert.equal((await writes(page, "pompa/polecenie")).length, 0);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("Zabezpieczenie wody: ostrzeżenie i trwała blokada widoczne w całej aplikacji", async () => {
+  const data = seedData(Date.now()),
+    t = Date.now();
+  data.pompa.ustawienia.zabezpieczenieWody = {
+    wersja: 1,
+    id: "water-test",
+    wlaczony: true,
+    stopCm: 25,
+    ostrzegaj: true,
+    ostrzezenieCm: 50,
+    resetId: "domyslne",
+    zmieniono: t,
+    zmienil: "test",
+  };
+  data.pompa.status.aktualizacjaPoziomu = t;
+  data.pompa.status.poziomWodyProc = 18;
+  data.pompa.statusZabezpieczeniaWody = {
+    wersja: 1,
+    ustawieniaId: "water-test",
+    aktualizacja: t,
+    wlaczony: true,
+    ostrzegaj: true,
+    ostrzezenie: true,
+    awaria: "",
+    poziomCm: 45,
+    stopCm: 25,
+    ostrzezenieCm: 50,
+  };
+  const { page, ctx, errors } = await open({ data });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  assert.equal(await page.isVisible("#waterSafetyBanner"), true);
+  assert.match(await page.textContent("#waterSafetyBanner"), /45/);
+  await page.evaluate(() => globalThis.__fb.set("pompa/statusZabezpieczeniaWody/awaria", "Niski poziom wody"));
+  await page.click("#controlTab");
+  assert.equal(await page.isDisabled("#startPump"), true);
+  assert.equal(await page.isDisabled("#stopPump"), false);
+  assert.match(await page.textContent("#waterSafetyState"), /BLOKADA/);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
 test("Regulator ciśnienia: opcjonalny, zapis nie uruchamia pompy, blokada Hz i start od minimum", async () => {
   const data = seedData(Date.now()),
     t = Date.now();

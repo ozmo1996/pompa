@@ -18,6 +18,7 @@ import {
 } from "./logic.js";
 import { $, S, dbRef, el, fb, isLive, now, safe, user } from "./state.js";
 import { pressureMode, pressureCanStart, renderPressureControl } from "./pressureControl.js";
+import { waterCanStart, renderWaterSafety } from "./waterSafety.js";
 
 const { silnik: M, progi: P } = CFG;
 
@@ -233,6 +234,8 @@ async function sendCommand(action) {
     return message("Automat ciśnienia jest włączony — ręczna zmiana Hz zablokowana.");
   if (action === "start" && !pressureCanStart())
     return message("Regulator ciśnienia nie potwierdził gotowości. Sprawdź pomiar i blokadę w karcie automatu.");
+  if (action === "start" && !waterCanStart())
+    return message("START zablokowany przez zabezpieczenie wody. Sprawdź poziom, pomiar i blokadę.");
   let hz = null;
   if (!stop) {
     hz = pressureMode() && action === "start" ? S.pressureCfg.minHz : validHz($("controlHz").value);
@@ -263,7 +266,7 @@ async function sendCommand(action) {
       });
       if (!ok) return message("Anulowano — polecenie nie zostało wysłane.");
       // Okno mogło być otwarte długo — sprawdź stan ponownie przed wysłaniem.
-      if (cmd.busy || !canDrive() || (action === "start" && !pressureCanStart())) {
+      if (cmd.busy || !canDrive() || (action === "start" && (!pressureCanStart() || !waterCanStart()))) {
         message("Stan pompy lub połączenia zmienił się — polecenie nie zostało wysłane.");
         return renderControl();
       }
@@ -333,7 +336,7 @@ export function renderControl(live = isLive()) {
   const inputs = u && live && s?.polaczony === true && !cmd.busy;
   $("controlHz").disabled = !inputs || pressureMode();
   $("controlHzSlider").disabled = !inputs || pressureMode();
-  $("startPump").disabled = !drive || !pressureCanStart();
+  $("startPump").disabled = !drive || !pressureCanStart() || !waterCanStart();
   $("setFrequency").disabled = !drive || pressureMode();
   $("stopPump").disabled = !stop;
   $("stopNote").hidden = !stop || live;
@@ -343,6 +346,7 @@ export function renderControl(live = isLive()) {
   safe(renderPower, live);
   safe(renderPreview);
   safe(renderPressureControl);
+  safe(renderWaterSafety);
 }
 
 export function initControl() {

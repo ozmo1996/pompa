@@ -115,6 +115,7 @@
           <div id="connection" class="badge"><span class="dot"></span><span id="connectionText">Łączenie…</span></div>
         </div>
         <div id="dataMessage" class="notice" role="status" aria-live="polite"></div>
+        <div id="waterSafetyBanner" class="notice warn" role="alert" hidden></div>
         <nav class="tabs" aria-label="Widok aplikacji">
           <button class="tab active" id="overviewTab" type="button" aria-controls="overviewView" aria-pressed="true">
             Czujniki</button
@@ -377,6 +378,44 @@
               </div>
             </article>
           </div>
+          <article class="card wide" id="waterSafetyCard">
+            <p class="eyebrow">Lokalne zabezpieczenie Raspberry</p>
+            <h2>Niski poziom wody</h2>
+            <p id="waterSafetyState" class="notice" role="status">Oczekiwanie na Raspberry</p>
+            <p>Aktualny poziom: <b id="waterSafetyLevel">— cm</b></p>
+            <div class="alarm-setting-grid">
+              <label class="alarm-setting-field"
+                ><span>Zatrzymuj pompę przy niskim poziomie</span><input id="waterStopOn" type="checkbox"
+              /></label>
+              <label class="alarm-setting-field"
+                ><span>Próg STOP (cm)</span><input id="waterStopCm" type="number" min="1" max="245" step="1" value="25"
+              /></label>
+              <label class="alarm-setting-field"
+                ><span>Ostrzegaj przed niskim poziomem</span><input id="waterWarnOn" type="checkbox"
+              /></label>
+              <label class="alarm-setting-field"
+                ><span>Próg ostrzeżenia (cm)</span
+                ><input id="waterWarnCm" type="number" min="6" max="250" step="1" value="50"
+              /></label>
+            </div>
+            <p id="waterSafetyPercents" class="small"></p>
+            <p class="small">
+              Poziom liczony z sondy dla zakresu 0–250 cm, nie procent objętości. Dobierz STOP powyżej minimalnego
+              zanurzenia wlotu pompy, uwzględniając czas zatrzymania i niedokładność kalibracji. 25 i 50 cm to tylko
+              wartości przykładowe.
+            </p>
+            <p class="small">
+              Przy włączonym STOP: poziom ≤ próg lub brak aktualnego pomiaru przez 5 s zatrzymuje pompę. Działa także
+              bez telefonu i internetu, po zapisaniu ustawień na Raspberry. Bez automatycznego ponownego rozruchu.
+              Skasowanie blokady i START wymagają postoju oraz poziomu ponad STOP + 5 cm (jeśli zabezpieczenie jest
+              włączone).
+            </p>
+            <div class="actions">
+              <button id="saveWaterSafety" type="button">Zapisz zabezpieczenie</button
+              ><button id="resetWaterSafety" type="button" class="secondary">Skasuj blokadę</button>
+            </div>
+            <p id="waterSafetyMessage" class="small" role="status"></p>
+          </article>
           <article class="card wide" id="pressureControlCard">
             <p class="eyebrow">Opcjonalny automat Raspberry · ciśnienie na tłoczeniu</p>
             <h2>Utrzymywanie ciśnienia</h2>

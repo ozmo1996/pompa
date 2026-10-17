@@ -475,6 +475,7 @@ async function applySettings(value) {
   Object.assign(P, settings.progi);
   pending.clear();
   for (const [typ, entry] of active) {
+    if (typ.startsWith("zabezpieczenieWody")) continue; // osobne ustawienia zabezpieczenia lokalnego
     const r = ruleFor(typ);
     if (!r || !r.wlaczony) cond(typ, false, () => ({}), { clearS: 0 });
     else if (r.poziom !== "auto" && entry.id && entry.poziom !== r.poziom) {
@@ -553,6 +554,34 @@ async function start() {
     if (v?.typ && !active.has(v.typ)) active.set(v.typ, { id: c.key, clearSince: 0, poziom: v.poziom, tytul: v.tytul });
   });
   log("start, aktywne alarmy:", [...active.keys()].join(", ") || "brak");
+  db.ref("pompa/statusZabezpieczeniaWody").on("value", (s) => {
+    const w = s.val();
+    if (!w || !num(w.aktualizacja) || now() - w.aktualizacja > 10000) return;
+    cond(
+      "zabezpieczenieWodyStop",
+      !!w.awaria,
+      () => ({
+        poziom: "awaria",
+        tytul: "Zabezpieczenie poziomu wody — blokada pompy",
+        opis:
+          w.awaria +
+          (w.stopNiepotwierdzony
+            ? ". STOP niepotwierdzony, ponawianie."
+            : ". Wymagane ręczne skasowanie blokady. Brak automatycznego wznowienia."),
+      }),
+      { clearS: 0 },
+    );
+    cond(
+      "zabezpieczenieWodyOstrzezenie",
+      w.ostrzegaj === true && w.ostrzezenie === true && !w.awaria,
+      () => ({
+        poziom: "ostrzezenie",
+        tytul: "Poziom wody zbliża się do progu zatrzymania",
+        opis: `Poziom ${f(w.poziomCm)} cm; ostrzeżenie ${f(w.ostrzezenieCm)} cm. STOP: ${w.wlaczony ? f(w.stopCm) + " cm" : "wyłączony"}.`,
+      }),
+      { clearS: 0 },
+    );
+  });
   db.ref("pompa/ustawienia/alarmy").on("value", (s) => {
     applySettings(s.val()).catch((e) => log("ustawienia błąd", e.message));
   });
