@@ -3,6 +3,13 @@
 Status: kod testowy. Samo opublikowanie strony NIE uruchamia bramki, tunelu ani kamery.
 Nie uznawać testów atrap za potwierdzenie obrazu na telefonie przez LTE.
 
+Weryfikacja rzeczywista 2026-10-17: obraz z kamery odebrany w zalogowanej przeglądarce przez
+publiczny Funnel HTTPS, poza LAN Raspberry. Zwykłe połączenie przez publiczny DNS bez tokenu
+zwraca 401 i poprawny nagłówek CORS. Po zatrzymaniu odtwarzacza go2rtc potwierdziło 0 odbiorców.
+Wszystkie cztery usługi pompy pozostały aktywne. Test na fizycznym telefonie przez LTE pozostaje
+do wykonania przez użytkownika. Certyfikaty wymagają `--statedir`; poprawka istniejącego testu
+jest w `repair-camera-tls.cjs` i restartuje tylko zweryfikowany testowy proces tailscaled.
+
 Strona testu: `/pompa/beta/kamery/`. Produkcyjny index, style, config i service worker pozostają bez zmian.
 Test nie rejestruje service workera, powiadomień, pulsu pogody ani zapisów do Firebase.
 Logowanie korzysta z tego samego projektu Firebase i istniejącej sesji; wylogowanie z testu wylogowuje
