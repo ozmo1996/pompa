@@ -1,8 +1,36 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { decodeRegisters } = require("./nd20.js");
-const { TelemetryHistory, waterSample } = require("./telemetry-history.js");
+const { TelemetryHistory, waterSample, pressureSample } = require("./telemetry-history.js");
 const { DatabaseSync } = require("node:sqlite");
+
+test("Ciśnienie: wyłącznie pracująca pompa i świeże prawidłowe pomiary, zero jest pomiarem", () => {
+  const now = 1000000;
+  const s = {
+    polaczony: true,
+    pracuje: true,
+    aktualizacja: now,
+    cisnienieTloczenia: { polaczony: true, aktualizacja: now, bar: 25 },
+  };
+  assert.equal(pressureSample(s, now).cisnienieBar, 25);
+  for (const patch of [
+    { pracuje: false },
+    { polaczony: false },
+    { aktualizacja: now - 3000 },
+    { aktualizacja: now + 1 },
+  ])
+    assert.equal(pressureSample({ ...s, ...patch }, now), null);
+  for (const patch of [
+    { polaczony: false },
+    { aktualizacja: now - 3000 },
+    { bar: null },
+    { bar: NaN },
+    { bar: -1 },
+    { bar: 41 },
+  ])
+    assert.equal(pressureSample({ ...s, cisnienieTloczenia: { ...s.cisnienieTloczenia, ...patch } }, now), null);
+  assert.equal(pressureSample({ ...s, cisnienieTloczenia: { ...s.cisnienieTloczenia, bar: 0 } }, now).cisnienieBar, 0);
+});
 
 test("Historia: świeża woda na postoju, bez fikcyjnych pomiarów offline", () => {
   const s = { sondaPolaczona: true, aktualizacja: 1000000, poziomWodyProc: 0, pracuje: false };
@@ -39,6 +67,20 @@ test("Historia: interwały 10 s / 1 min / 5 min i trwała kolejka po błędzie s
   };
   const h = new TelemetryHistory(db, ref),
     t = 1000000;
+  for (let dt = 0; dt <= 20000; dt += 1000) {
+    h.pressure(
+      {
+        polaczony: true,
+        pracuje: true,
+        aktualizacja: t + dt,
+        cisnienieTloczenia: { polaczony: true, bar: 25, aktualizacja: t + dt },
+      },
+      t + dt,
+    );
+  }
+  h.pressure({ polaczony: true, pracuje: false }, t + 30000);
+  assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM telemetry WHERE kind='cisnienie'").get().n, 3);
+  assert.equal(h.pressureRun, null);
   for (let dt = 0; dt <= 300000; dt += 5000) {
     h.meter({ mocKw: 0, czestotliwoscHz: 50 }, t + dt);
     h.water({ sondaPolaczona: true, aktualizacja: t + dt, poziomWodyProc: 20 }, t + dt);
@@ -47,13 +89,13 @@ test("Historia: interwały 10 s / 1 min / 5 min i trwała kolejka po błędzie s
   assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM telemetry WHERE kind='agregat'").get().n, 6);
   assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM telemetry WHERE kind='woda'").get().n, 2);
   await assert.rejects(h.flush());
-  assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM outbox").get().n, 8);
+  assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM outbox").get().n, 11);
   const restarted = new TelemetryHistory(db, ref);
   restarted.meter({ mocKw: 0 }, t + 300001);
-  assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM outbox").get().n, 8);
+  assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM outbox").get().n, 11);
   fail = false;
   await restarted.flush();
-  assert.equal(Object.keys(uploaded).length, 8);
+  assert.equal(Object.keys(uploaded).length, 11);
   assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM outbox").get().n, 0);
   sqlite.close();
 });

@@ -3,6 +3,22 @@
 // Niezależna historia agregatu i wody. SQLite przechowuje także kolejkę
 // wysyłki, więc przerwa w internecie nie usuwa zebranych próbek.
 const finite = (v) => typeof v === "number" && Number.isFinite(v);
+function pressureSample(s, now) {
+  const p = s?.cisnienieTloczenia;
+  const fresh = (t) => finite(t) && t <= now && now - t < 3000;
+  if (
+    s?.polaczony !== true ||
+    s.pracuje !== true ||
+    !fresh(s.aktualizacja) ||
+    p?.polaczony !== true ||
+    !fresh(p.aktualizacja) ||
+    !finite(p.bar) ||
+    p.bar < 0 ||
+    p.bar > 40
+  )
+    return null;
+  return { czas: now, typ: "cisnienie", pracuje: true, cisnienieBar: p.bar, pomiarCzas: p.aktualizacja };
+}
 function waterSample(s, now) {
   if (
     !s?.sondaPolaczona ||
@@ -58,6 +74,16 @@ class TelemetryHistory {
     const row = waterSample(status, now);
     if (row) this.save("woda", 300000, row, true);
   }
+  pressure(status, now) {
+    const row = pressureSample(status, now);
+    if (!row) {
+      this.pressureRun = null;
+      return;
+    }
+    this.pressureRun ??= now;
+    row.sesjaCisnienia = this.pressureRun;
+    this.save("cisnienie", 10000, row, true);
+  }
   async flush() {
     const rows = this.db.prepare("SELECT id, dane FROM outbox ORDER BY id LIMIT 100").all();
     if (!rows.length) return;
@@ -67,4 +93,4 @@ class TelemetryHistory {
     })();
   }
 }
-module.exports = { TelemetryHistory, waterSample };
+module.exports = { TelemetryHistory, waterSample, pressureSample };

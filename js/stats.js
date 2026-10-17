@@ -14,7 +14,7 @@ export function resetStats() {
   renderStats();
 }
 
-function drawChart(id, key, color, unit, minimumMax, maxGap) {
+function drawChart(id, key, color, unit, minimumMax, maxGap, sessionKey) {
   const canvas = $(id),
     box = canvas.getBoundingClientRect(),
     dpr = Math.min(devicePixelRatio || 1, 2),
@@ -25,7 +25,7 @@ function drawChart(id, key, color, unit, minimumMax, maxGap) {
   const c = canvas.getContext("2d");
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   c.clearRect(0, 0, w, h);
-  const segments = chartSegments(rows, key, maxGap);
+  const segments = chartSegments(rows, key, maxGap, sessionKey);
   let maximum = minimumMax;
   for (const segment of segments) for (const p of segment) maximum = Math.max(maximum, p.value);
   const stepY = niceStep(maximum / 4),
@@ -91,6 +91,18 @@ const td = (text, className = "") => el("td", { textContent: text, className });
 const when = (t) => new Date(t).toLocaleString("pl-PL");
 
 export function renderStats() {
+  const pressures = rows.filter((x) => x.typ === "cisnienie" && x.pracuje === true && isNum(x.cisnienieBar));
+  let pressureMin = Infinity,
+    pressureMax = -Infinity,
+    pressureSum = 0;
+  for (const x of pressures) {
+    pressureMin = Math.min(pressureMin, x.cisnienieBar);
+    pressureMax = Math.max(pressureMax, x.cisnienieBar);
+    pressureSum += x.cisnienieBar;
+  }
+  $("pressureSummary").textContent = pressures.length
+    ? `Min: ${fmt(pressureMin, " bar")} · średnia: ${fmt(pressureSum / pressures.length, " bar")} · maks: ${fmt(pressureMax, " bar")} · ${pressures.length} próbek`
+    : "Brak pomiarów podczas pracy pompy w wybranym zakresie.";
   const valid = rows.filter((x) => isNum(x.poziom)),
     levels = valid.map((x) => x.poziom),
     cycles = cyclesFrom(valid),
@@ -144,14 +156,25 @@ export function renderStats() {
               td(fmt(x.mA, " mA")),
               td(fmt(waterVolumeM3(x.poziom), " m³", 0)),
               td(fmt(x.temperaturaWody, " °C")),
-              td(x.typ === "woda" ? "Pomiar wody" : x.falownikPolaczony ? (x.pracuje ? "Pracuje" : "Stop") : "Offline"),
+              td(
+                x.typ === "cisnienie"
+                  ? "Pracuje · ciśnienie"
+                  : x.typ === "woda"
+                    ? "Pomiar wody"
+                    : x.falownikPolaczony
+                      ? x.pracuje
+                        ? "Pracuje"
+                        : "Stop"
+                      : "Offline",
+              ),
               td(fmt(x.hz, " Hz")),
               td(fmt(x.prad, " A")),
               td(fmt(x.napiecie, " V")),
               td(fmt(x.moc, " kW")),
+              td(fmt(x.cisnienieBar, " bar")),
             ),
           )
-      : [el("tr", {}, el("td", { colSpan: 10, textContent: "Brak danych." }))]),
+      : [el("tr", {}, el("td", { colSpan: 11, textContent: "Brak danych." }))]),
   );
   requestAnimationFrame(() => {
     if ($("statsView").hidden) return;
@@ -159,6 +182,7 @@ export function renderStats() {
     drawChart("pumpChart", "moc", "#b99cf0", "kW", 10, 2 * 60000);
     drawChart("pumpHzChart", "hz", "#d6f48a", "Hz", 50, 2 * 60000);
     drawChart("pumpCurrentChart", "prad", "#f0c995", "A", 10, 2 * 60000);
+    drawChart("pressureChart", "cisnienieBar", "#4cc9e8", "bar", 40, 20000, "sesjaCisnienia");
   });
 }
 

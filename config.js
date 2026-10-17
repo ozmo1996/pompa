@@ -1,7 +1,7 @@
 // Jedno źródło konfiguracji dla aplikacji (import w modułach JS) i service workera (importScripts).
 // Plik celowo nie używa import/export, żeby działał w obu kontekstach.
 globalThis.POMPA_CONFIG = Object.freeze({
-  wersja: "2.24",
+  wersja: "2.25",
 
   // Przyblizenie misy jako scietego stozka o eliptycznych, podobnych przekrojach.
   zbiornik: Object.freeze({ wysokoscCm: 250, dnoM2: 470, koronaM2: 805 }),
@@ -55,7 +55,7 @@ globalThis.POMPA_CONFIG = Object.freeze({
 
   historia: Object.freeze({
     maxDni: 30,
-    probekNaDzien: 3400, // praca + agregat co minutę + woda co 5 min
+    probekNaDzien: 12000, // także ciśnienie tłoczenia co 10 s podczas pracy
     oknoWykresuParametruMs: 6 * 3600e3,
   }),
 });

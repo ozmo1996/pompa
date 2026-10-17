@@ -228,15 +228,18 @@ export function cyclesFrom(rows, { minStep = 0.3, minChange = 1, minMs = 60000, 
 }
 
 /** Oddzielne odcinki wykresu; null przerywa pomiar, brak pola to rekord innego czujnika. */
-export function chartSegments(rows, key, maxGapMs) {
+export function chartSegments(rows, key, maxGapMs, sessionKey) {
   const segments = [];
   let current = [];
+  let session;
   const flush = () => {
     if (current.length) segments.push(current);
     current = [];
   };
   for (const row of rows) {
     if (!(key in row)) continue;
+    if (sessionKey && session !== row[sessionKey]) flush();
+    if (sessionKey) session = row[sessionKey];
     if (!isNum(row[key]) || !isNum(row.czas)) {
       flush();
       continue;

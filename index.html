@@ -578,6 +578,16 @@
           </article>
 
           <article class="card chart">
+            <h2>Ciśnienie tłoczenia · bar</h2>
+            <p class="small">Zapis co 10 s wyłącznie podczas pracy pompy. Przerwy i brak pomiaru nie są zerami.</p>
+            <canvas
+              id="pressureChart"
+              height="230"
+              aria-label="Wykres ciśnienia tłoczenia w bar podczas pracy pompy"
+            ></canvas>
+            <p id="pressureSummary" class="small" role="status">Brak pomiarów podczas pracy pompy.</p>
+          </article>
+          <article class="card chart">
             <h2>Moc falownika · kW</h2>
             <canvas id="pumpChart" height="230" aria-label="Wykres mocy falownika w kW"></canvas>
           </article>
@@ -632,11 +642,12 @@
                     <th>A</th>
                     <th>V</th>
                     <th>kW</th>
+                    <th>bar</th>
                   </tr>
                 </thead>
                 <tbody id="historyRows">
                   <tr>
-                    <td colspan="10">Brak danych.</td>
+                    <td colspan="11">Brak danych.</td>
                   </tr>
                 </tbody>
               </table>

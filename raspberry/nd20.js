@@ -74,7 +74,16 @@ async function main() {
     .ref(`${cfg.firebase.sciezka}/status`)
     .on("value", (s) => {
       status = s.val();
+      if (status?.pracuje !== true || status?.polaczony !== true) history.pressureRun = null;
     });
+  // Niezależnie od czasu odpowiedzi ND20 i wysyłki do chmury; nie zapisuje komend do falownika.
+  setInterval(() => {
+    try {
+      history.pressure(status, Date.now());
+    } catch (error) {
+      console.error("Historia ciśnienia:", error.message);
+    }
+  }, 1000);
   for (;;) {
     const now = Date.now();
     try {

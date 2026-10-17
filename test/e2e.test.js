@@ -458,6 +458,34 @@ test("Statystyki: automatycznie dociągają nową próbkę i mają osobne wykres
   await ctx.close();
 });
 
+test("Statystyki ciśnienia: wykres, bar i podsumowanie historii pracy", async () => {
+  const data = seedData(Date.now()),
+    t = Date.now();
+  data.pompa.historia.pressure1 = {
+    czas: t - 20000,
+    typ: "cisnienie",
+    pracuje: true,
+    cisnienieBar: 20,
+    sesjaCisnienia: 1,
+  };
+  data.pompa.historia.pressure2 = {
+    czas: t - 10000,
+    typ: "cisnienie",
+    pracuje: true,
+    cisnienieBar: 24,
+    sesjaCisnienia: 1,
+  };
+  const { page, ctx, errors } = await open({ data });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#statsTab");
+  await page.waitForFunction(() => document.getElementById("pressureSummary").textContent.includes("2 próbek"));
+  assert.equal(await page.isVisible("#pressureChart"), true);
+  assert.match(await page.textContent("#pressureSummary"), /20.*22.*24/);
+  assert.match(await page.textContent("#historyRows"), /24.*bar/);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
 test("Alarmy na telefonie: wyszukiwanie i zapis dostępny podczas przewijania, grupa pozostaje otwarta", async () => {
   const { page, ctx, errors } = await open();
   await page.setViewportSize({ width: 390, height: 844 });

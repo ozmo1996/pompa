@@ -33,7 +33,7 @@ export class HistoryCache {
   async #load(start) {
     const gen = this.gen,
       t = now(),
-      limit = (ms) => Math.min(Math.ceil((ms / DAY) * H.probekNaDzien * 1.2) + 100, 60000);
+      limit = (ms) => Math.min(Math.ceil((ms / DAY) * H.probekNaDzien * 1.2) + 100, 450000);
     const fetch = async (from, to) => {
       const c = [fb.orderByChild("czas"), fb.startAt(from)];
       if (to !== undefined) c.push(fb.endAt(to));
