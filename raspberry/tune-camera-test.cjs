@@ -15,7 +15,7 @@ function call(path, query = {}) {
   const url = new URL('http://' + camera.hostname + path);
   for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
   try { return cp.execFileSync('curl', ['--max-time', '12', '-sfS', '--digest', '--user', credentials, url.toString()], { timeout: 15000, stdio: ['ignore', 'pipe', 'pipe'] }).toString(); }
-  catch { throw new Error('Blad polaczenia z API kamery (dane dostepowe nie sa logowane)'); }
+  catch (error) { throw new Error('Blad API kamery: curl=' + error.status + ', signal=' + (error.signal || 'brak')); }
 }
 function parse(body) {
   return Object.fromEntries(body.split(/\r?\n/).filter(line => line.includes('=')).map(line => {
@@ -27,7 +27,7 @@ const before = config();
 const prefix = 'Encode[0].ExtraFormat[1]';
 const target = {
   [prefix + '.VideoEnable']: 'true', [prefix + '.AudioEnable']: 'false',
-  [prefix + '.Video.Width']: '1280', [prefix + '.Video.Height']: '720',
+  [prefix + '.Video.resolution']: '1280x720',
   [prefix + '.Video.FPS']: '20', [prefix + '.Video.GOP']: '20',
   [prefix + '.Video.BitRate']: '1280', [prefix + '.Video.BitRateControl']: 'CBR',
   [prefix + '.Video.Compression']: 'H.264', [prefix + '.Video.Profile']: 'Main'
@@ -42,7 +42,7 @@ const set = (values) => {
   if (result !== 'OK') throw new Error('Kamera odrzucila konfiguracje');
 };
 const verify = (values, after) => Object.entries(values).every(([key, value]) => after[key] === value);
-const file = dir + '/camera-quality-backup.json';
+const file = dir + '/camera-quality-hd-backup.json';
 if (mode === 'inspect') console.log(JSON.stringify({ current: original, proposed: target }));
 if (mode === 'apply') {
   const caps = call('/cgi-bin/encode.cgi', { action: 'getConfigCaps', channel: '0' });
