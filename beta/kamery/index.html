@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Kamery · Pompa TEST</title>
+    <link rel="stylesheet" href="camera.css" />
+    <script src="../../config.js"></script>
+    <script type="module" src="camera.js"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <span class="label">POMPA · WERSJA TESTOWA</span>
+          <h1>Podgląd kamer</h1>
+        </div>
+        <a href="../../">Wróć do aplikacji</a>
+      </header>
+      <p class="notice">
+        Test niezależny od sterowania pompą. Nie uruchamia pompy, nie zmienia ustawień i nie nagrywa obrazu.
+      </p>
+      <nav aria-label="Widok testu">
+        <button id="camerasTab" aria-pressed="true">Kamery</button
+        ><button id="helpTab" aria-pressed="false">Połączenie</button>
+      </nav>
+      <section id="camerasView">
+        <article>
+          <div class="title">
+            <h2>Kamera 1</h2>
+            <span id="connection" role="status">Wyłączony</span>
+          </div>
+          <div class="screen">
+            <video id="cameraVideo" controls playsinline muted aria-label="Obraz z kamery 1"></video>
+            <p id="placeholder">Podgląd uruchamiasz tylko wtedy, gdy go potrzebujesz.</p>
+          </div>
+          <p id="message" role="status" aria-live="polite">Najpierw zaloguj się kontem aplikacji Pompa.</p>
+          <div class="actions">
+            <button id="play" disabled>Włącz podgląd</button><button id="stop" disabled>Zatrzymaj</button>
+          </div>
+          <p class="muted">
+            Obraz zużywa internet mobilny. Po przejściu w tło lub opuszczeniu zakładki transmisja zostaje zatrzymana.
+          </p>
+        </article>
+        <article id="loginPanel">
+          <h2>Logowanie</h2>
+          <p>To samo konto co w aplikacji Pompa, nie konto kamery.</p>
+          <form id="loginForm">
+            <label for="email">E-mail</label><input id="email" type="email" autocomplete="username" required /><label
+              for="password"
+              >Hasło aplikacji</label
+            ><input id="password" type="password" autocomplete="current-password" required /><button
+              id="loginButton"
+              disabled
+            >
+              Zaloguj
+            </button>
+          </form>
+        </article>
+        <p id="account" hidden><span id="accountName"></span> <button id="logout">Wyloguj</button></p>
+      </section>
+      <section id="helpView" hidden>
+        <article>
+          <h2>Połączenie testowe</h2>
+          <p>Użyj adresu HTTPS bramki na Raspberry. Nie wpisuj adresu kamery, loginu ani jej hasła.</p>
+          <form id="endpointForm">
+            <label for="endpoint">Adres bramki HTTPS</label
+            ><input id="endpoint" type="url" placeholder="https://adres-bramki" required /><button>
+              Zapisz na tym urządzeniu
+            </button>
+          </form>
+          <p id="endpointMessage" role="status"></p>
+          <p class="muted">
+            Adres jest zapamiętany tylko w tej przeglądarce. Bez skonfigurowanej bramki test nie pokaże obrazu. Samo
+            otwarcie połączenia nie potwierdza, że kamera działa — dopiero odtwarzany obraz.
+          </p>
+        </article>
+        <article>
+          <h2>Jak cofnąć test?</h2>
+          <p>
+            Wróć do zwykłej aplikacji linkiem u góry. Nie instalujemy nowej wersji aplikacji. Usługę kamer można
+            wyłączyć osobno, bez restartowania pompy.
+          </p>
+          <p>Test nie instaluje aplikacji ani powiadomień. Kamera i jej hasło pozostają po stronie Raspberry.</p>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,24 @@
+[Unit]
+Description=Pompa - oddzielny test podgladu kamery (tylko odczyt)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/pompa-kamery-test
+Environment=CAMERA_GATEWAY_CONFIG=/home/pi/pompa-kamery-test/gateway.json
+ExecStart=/usr/bin/node /home/pi/pompa-kamery-test/camera-gateway.js
+Restart=on-failure
+RestartSec=10
+Nice=19
+CPUQuota=20%
+MemoryMax=160M
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

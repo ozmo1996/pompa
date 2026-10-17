@@ -57,6 +57,123 @@ async function open({ data, seed = {}, clockSkew = 0, sdkFails = false, clock = 
 }
 const writes = (page, p) => page.evaluate((p) => globalThis.__fb.writes.filter((w) => w.path === p), p);
 
+test("Kamery TEST: izolacja od sterowania, telefon, konfiguracja i brak automatycznej transmisji", async () => {
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 800 }, serviceWorkers: "block" });
+  const page = await ctx.newPage(),
+    requests = [],
+    errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("request", (request) => requests.push(request.url()));
+  await page.route(/gstatic\.com\/firebasejs/, (r) => r.fulfill({ contentType: "text/javascript", body: MOCK }));
+  await page.goto(base + "beta/kamery/");
+  await page.waitForSelector("#account:not([hidden])");
+  assert.match(await page.textContent("#message"), /Brak adresu/);
+  assert.equal(await page.isDisabled("#play"), true);
+  for (const width of [320, 390, 1280]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  }
+  await page.click("#helpTab");
+  await page.fill("#endpoint", "https://admin:sekret@example.com/");
+  await page.click("#endpointForm button");
+  assert.match(await page.textContent("#endpointMessage"), /bez hasła/);
+  await page.fill("#endpoint", "https://gateway.example.com/");
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.click("#endpointForm button");
+  assert.match(await page.textContent("#endpointMessage"), /Zapisano/);
+  await page.click("#camerasTab");
+  assert.equal(await page.isDisabled("#play"), false);
+  assert.equal(
+    requests.some((u) => /gateway\.example|database|firebase-messaging|192\.168/.test(u)),
+    false,
+  );
+  assert.equal(await page.evaluate(() => globalThis.__fb.writes.length), 0);
+  const logic = await page.evaluate(async () => {
+    const { normalizeEndpoint } = await import("./camera-logic.js");
+    return [
+      "http://example.com",
+      "https://u:p@example.com",
+      "https://example.com/api",
+      "https://example.com/?token=x",
+      "https://example.com/#x",
+    ].map((value) => {
+      try {
+        normalizeEndpoint(value);
+        return false;
+      } catch {
+        return true;
+      }
+    });
+  });
+  assert.deepEqual(logic, [true, true, true, true, true]);
+  await page.evaluate(() => {
+    globalThis.__fb.user.getIdToken = async () => "test-only-token";
+  });
+  let streamRequests = 0;
+  await page.route("https://gateway.example.com/stream", (route) => {
+    streamRequests++;
+    assert.equal(route.request().headers().authorization, "Bearer test-only-token");
+    return route.fulfill({ status: 403, headers: { "access-control-allow-origin": new URL(base).origin } });
+  });
+  await page.click("#play");
+  await page.waitForFunction(() => document.getElementById("message").textContent.includes("Brak uprawnień"));
+  assert.equal(streamRequests, 1);
+  assert.equal(await page.isDisabled("#stop"), true);
+  assert.equal(await page.evaluate(() => globalThis.__fb.writes.length), 0);
+  if (process.env.POMPA_CAMERA_CAPTURE) {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: process.env.POMPA_CAMERA_CAPTURE });
+  }
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("Kamery TEST: Stop, zmiana zakładki i przejście w tło przerywają żądanie", async () => {
+  const ctx = await browser.newContext({ serviceWorkers: "block" });
+  const page = await ctx.newPage();
+  await page.route(/gstatic\.com\/firebasejs/, (r) => r.fulfill({ contentType: "text/javascript", body: MOCK }));
+  await page.addInitScript(() => {
+    localStorage.setItem("pompaCameraTestEndpoint", "https://gateway.example.com");
+    const realFetch = window.fetch;
+    window.fetch = (url, options) => {
+      if (url !== "https://gateway.example.com/stream") return realFetch(url, options);
+      globalThis.cameraPending = true;
+      return new Promise((resolve, reject) =>
+        options.signal.addEventListener(
+          "abort",
+          () => {
+            globalThis.cameraPending = false;
+            reject(new Error("Przerwano test"));
+          },
+          { once: true },
+        ),
+      );
+    };
+  });
+  await page.goto(base + "beta/kamery/");
+  await page.waitForSelector("#account:not([hidden])");
+  await page.evaluate(() => {
+    globalThis.__fb.user.getIdToken = async () => "test-only-token";
+  });
+  for (const action of ["stop", "help", "background"]) {
+    if (action !== "stop") await page.click("#camerasTab");
+    await page.click("#play");
+    await page.waitForFunction(() => globalThis.cameraPending === true);
+    if (action === "stop") await page.click("#stop");
+    if (action === "help") await page.click("#helpTab");
+    if (action === "background")
+      await page.evaluate(() => {
+        Object.defineProperty(document, "hidden", { value: true, configurable: true });
+        document.dispatchEvent(new window.Event("visibilitychange"));
+      });
+    await page.waitForFunction(() => globalThis.cameraPending === false);
+    assert.equal(await page.isDisabled("#stop"), true);
+  }
+  assert.equal(await page.evaluate(() => globalThis.__fb.writes.length), 0);
+  await ctx.close();
+});
+
 test("UX: wszystkie zakładki dostępne na telefonie, podsumowanie i łączność mają osobne znaczenia", async () => {
   const data = seedData(),
     t = Date.now();
