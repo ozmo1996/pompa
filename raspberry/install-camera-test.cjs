@@ -34,7 +34,7 @@ function saveVerified(name, data, hash) {
   fs.mkdirSync(dir + '/tailscale-state', { mode: 0o700 });
   const log = fs.openSync(dir + '/tailscaled.log', 'a', 0o600);
   const daemon = child.spawn(dir + '/tailscaled', [
-    '--tun=userspace-networking', '--port=0', '--state=' + dir + '/tailscale-state/state', '--socket=' + dir + '/tailscale.sock'
+    '--tun=userspace-networking', '--port=0', '--statedir=' + dir + '/tailscale-state', '--state=' + dir + '/tailscale-state/state', '--socket=' + dir + '/tailscale.sock'
   ], { detached: true, stdio: ['ignore', log, log] });
   daemon.unref();
   fs.closeSync(log);
