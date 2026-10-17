@@ -2392,6 +2392,238 @@ body:has(#controlView:not([hidden])) .hero p.small {
 #savePressureControl {
   margin-top: 20px;
 }
+/* v2.28: wspólna hierarchia statusów, skrócony nagłówek i obsługa telefonu. */
+.primary-stop-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: 12px 0 20px;
+}
+.primary-stop-row .danger {
+  min-width: 200px;
+  min-height: 48px;
+}
+#pumpControlCard .control-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.hero #connection:not(.offline) {
+  display: none;
+}
+.hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 14px;
+}
+.hero h1,
+.hero .eyebrow {
+  display: none;
+}
+.device-connections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 18px;
+}
+.device-status {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px 9px;
+  font-size: 12px;
+}
+.status-ok {
+  color: #d6f48a;
+}
+.status-neutral {
+  color: #afc1b8;
+}
+.status-warning {
+  color: #ffcd84;
+}
+.status-danger,
+.control-mode-summary.status-danger {
+  color: #ffbaba;
+}
+.notice.status-danger {
+  background: #542326;
+  border-color: #b84c50;
+  color: #ffe0e0;
+}
+.notice.status-warning {
+  background: #3c2e19;
+  border-color: #94713c;
+  color: #ffe0ab;
+}
+.device-status.status-warning {
+  border-color: #8f713c;
+}
+.overview-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.summary-tile {
+  margin: 0;
+  min-width: 0;
+  padding: 18px;
+}
+.summary-tile small,
+.summary-tile b,
+.summary-tile span {
+  display: block;
+}
+.summary-tile small {
+  color: var(--muted);
+  font-size: 14px;
+}
+.summary-tile b {
+  font-size: 24px;
+  margin: 10px 0 6px;
+  overflow-wrap: anywhere;
+}
+#summaryPump {
+  font-size: 19px;
+}
+.summary-tile span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.detail-heading {
+  margin: 24px 0 16px;
+}
+.small {
+  font-size: 14px;
+}
+.chart-selector {
+  margin-top: 20px;
+}
+#statsMetric {
+  width: 100%;
+  margin-bottom: 14px;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #17312a;
+  color: var(--text, #e9f4ed);
+  font: inherit;
+}
+.chart-inspector {
+  margin-bottom: 20px;
+}
+#statsPoint {
+  min-height: 24px;
+  overflow-wrap: anywhere;
+}
+#statsPointIndex {
+  width: 100%;
+  accent-color: var(--accent);
+  min-height: 44px;
+  padding: 0;
+}
+[data-stats-chart] {
+  margin-bottom: 12px;
+}
+#statsView details > summary,
+.note-editor-panel > summary {
+  padding: 14px 0;
+  cursor: pointer;
+  font-weight: 650;
+}
+.note-editor-panel {
+  margin-top: 20px;
+}
+#newNote {
+  margin: 12px 0;
+}
+#noteStatus:empty {
+  display: none;
+}
+@media (max-width: 640px) {
+  .primary-stop-row .danger {
+    width: 100%;
+  }
+  body {
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+  }
+  header {
+    margin-bottom: 14px;
+  }
+  .tabs {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 3px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    margin: 0;
+    border-radius: 16px 16px 0 0;
+    overflow: visible;
+    z-index: 30;
+    box-shadow: 0 -6px 24px #07140fbb;
+  }
+  .tabs .tab {
+    min-width: 0;
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 2px;
+    font-size: 12px;
+    letter-spacing: -0.2px;
+  }
+  .tab-badge {
+    font-size: 10px;
+    margin-left: 2px;
+    padding: 1px 3px;
+  }
+  .overview-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .summary-tile {
+    padding: 14px;
+  }
+  .summary-tile b {
+    font-size: 23px;
+    margin: 8px 0 5px;
+  }
+  #summaryPump {
+    font-size: 17px;
+  }
+  .device-connections {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .device-status {
+    font-size: 11px;
+    padding: 6px 7px;
+  }
+  .alarm-settings-actions {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+  .toast {
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  }
+  #alarmFilter {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+  #alarmFilter button {
+    min-width: 0;
+    font-size: 12px;
+    padding: 10px 8px;
+  }
+}
+@media (max-width: 360px) {
+  .tabs .tab {
+    font-size: 11px;
+  }
+}
 @media (max-width: 600px) {
   #pressureControlCard .control-grid {
     grid-template-columns: 1fr;

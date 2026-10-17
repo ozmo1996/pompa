@@ -1,5 +1,6 @@
 // Start aplikacji: ładowanie Firebase, logowanie, subskrypcje bazy i odświeżanie widoków.
 import { CFG } from "./logic.js";
+import { renderOverview } from "./overview.js";
 import { initWaterSafety, resetWaterSafety, setWaterSafety } from "./waterSafety.js";
 import { $, S, VIEWS, dbRef, el, fb, isLive, safe, showView } from "./state.js";
 import { renderSensors, initSensors } from "./sensors.js";
@@ -42,6 +43,7 @@ const SDK = (name) => `https://www.gstatic.com/firebasejs/${CFG.firebaseSdk}/fir
 function render() {
   const live = isLive();
   safe(renderSensors, live);
+  safe(renderOverview);
   safe(renderControl, live);
 }
 

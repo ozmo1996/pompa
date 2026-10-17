@@ -1,5 +1,5 @@
 // Zakładka „Statystyki”: historia poziomu i pracy, cykle zbiornika, ostatnie próbki.
-import { chartSegments, cyclesFrom, duration, fmt, isNum, niceStep, waterVolumeM3 } from "./logic.js";
+import { chartSegments, cyclesFrom, duration, fmt, isNum, niceStep, waterVolumeM3, lowerBound } from "./logic.js";
 import { workHistory } from "./history.js";
 import { $, S, el, now, onShowView, user } from "./state.js";
 
@@ -7,9 +7,25 @@ let days = 1,
   rows = [],
   loadSeq = 0,
   pendingLoads = 0;
+const charts = {
+  waterChart: ["poziom", "#4cc9e8", "%", 100, 6 * 60000],
+  pressureChart: ["cisnienieBar", "#4cc9e8", "bar", 40, 20000, "sesjaCisnienia"],
+  pumpChart: ["moc", "#b99cf0", "kW", 10, 2 * 60000],
+  pumpHzChart: ["hz", "#d6f48a", "Hz", 50, 2 * 60000],
+  pumpCurrentChart: ["prad", "#f0c995", "A", 10, 2 * 60000],
+};
+let activeChart = "waterChart",
+  plot = null,
+  selectedPoint = null;
 
 export function resetStats() {
   rows = [];
+  selectedPoint = null;
+  plot = null;
+  activeChart = "waterChart";
+  $("statsMetric").value = activeChart;
+  $("statsPointIndex").disabled = true;
+  $("statsPointIndex").removeAttribute("aria-valuetext");
   loadSeq++;
   renderStats();
 }
@@ -26,6 +42,7 @@ function drawChart(id, key, color, unit, minimumMax, maxGap, sessionKey) {
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   c.clearRect(0, 0, w, h);
   const segments = chartSegments(rows, key, maxGap, sessionKey);
+  const points = segments.flat();
   let maximum = minimumMax;
   for (const segment of segments) for (const p of segment) maximum = Math.max(maximum, p.value);
   const stepY = niceStep(maximum / 4),
@@ -46,12 +63,22 @@ function drawChart(id, key, color, unit, minimumMax, maxGap, sessionKey) {
     c.fillText(String(Math.round(maxY * (1 - i / 4))), 4, y + 4);
   }
   c.fillText(unit, 4, 12);
+  const first = now() - days * 86400e3,
+    last = now();
+  plot = { canvas, points, first, last, pad, iw, ih, maxY, unit, maxGap };
+  const range = $("statsPointIndex");
+  range.disabled = !points.length;
+  range.max = String(Math.max(0, points.length - 1));
+  if (selectedPoint && !points.some((p) => p.czas === selectedPoint.czas)) selectedPoint = null;
+  if (!selectedPoint) {
+    range.value = "0";
+    range.removeAttribute("aria-valuetext");
+  }
   if (!segments.length) {
+    $("statsPoint").textContent = "Brak próbek wybranego parametru w tym zakresie.";
     c.fillText("Brak pomiarów w tym zakresie", pad.l, h / 2);
     return;
   }
-  const first = now() - days * 86400e3,
-    last = now();
   const tick = (t) =>
     new Date(t).toLocaleString("pl-PL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   c.fillText(tick(first), pad.l, h - 7);
@@ -85,6 +112,43 @@ function drawChart(id, key, color, unit, minimumMax, maxGap, sessionKey) {
       c.fill();
     }
   }
+  if (selectedPoint) paintSelection(selectedPoint);
+  else $("statsPoint").textContent = "Dotknij wykresu lub przesuń suwak, aby odczytać konkretną próbkę.";
+}
+
+function paintSelection(point) {
+  if (!plot || !point) return;
+  const { canvas, first, last, pad, iw, ih, maxY, unit } = plot,
+    c = canvas.getContext("2d");
+  const x = pad.l + ((point.czas - first) / (last - first)) * iw,
+    y = pad.t + (1 - point.value / maxY) * ih;
+  c.save();
+  c.strokeStyle = "#ffffff";
+  c.fillStyle = "#ffffff";
+  c.lineWidth = 1;
+  c.beginPath();
+  c.moveTo(x, pad.t);
+  c.lineTo(x, pad.t + ih);
+  c.stroke();
+  c.beginPath();
+  c.arc(x, y, 4, 0, 2 * Math.PI);
+  c.fill();
+  c.restore();
+  const description = new Date(point.czas).toLocaleString("pl-PL") + " · " + fmt(point.value, " " + unit, 2);
+  c.save();
+  c.fillStyle = "#ffffff";
+  c.fillText(description, pad.l, 12);
+  c.restore();
+  $("statsPoint").textContent = description;
+  const range = $("statsPointIndex");
+  range.value = String(lowerBound(plot.points, point.czas));
+  range.setAttribute("aria-valuetext", description);
+}
+function drawActiveChart() {
+  document.querySelectorAll("[data-stats-chart]").forEach((node) => {
+    node.hidden = node.dataset.statsChart !== activeChart;
+  });
+  if (!$("statsView").hidden) drawChart(activeChart, ...charts[activeChart]);
 }
 
 const td = (text, className = "") => el("td", { textContent: text, className });
@@ -178,11 +242,7 @@ export function renderStats() {
   );
   requestAnimationFrame(() => {
     if ($("statsView").hidden) return;
-    drawChart("waterChart", "poziom", "#4cc9e8", "%", 100, 6 * 60000);
-    drawChart("pumpChart", "moc", "#b99cf0", "kW", 10, 2 * 60000);
-    drawChart("pumpHzChart", "hz", "#d6f48a", "Hz", 50, 2 * 60000);
-    drawChart("pumpCurrentChart", "prad", "#f0c995", "A", 10, 2 * 60000);
-    drawChart("pressureChart", "cisnienieBar", "#4cc9e8", "bar", 40, 20000, "sesjaCisnienia");
+    drawActiveChart();
   });
 }
 
@@ -190,7 +250,10 @@ async function loadStats(maxAge = 60000) {
   if (!user()) return;
   const seq = ++loadSeq,
     cached = workHistory.rows.length > 0;
-  if (!cached) $("statsMessage").textContent = "Pobieranie historii…";
+  if (!cached) {
+    $("statsMessage").textContent = "Pobieranie historii…";
+    $("statsRefreshState").textContent = "Pobieranie historii…";
+  }
   pendingLoads++;
   try {
     const r = await workHistory.ensure(now() - days * 86400e3, maxAge);
@@ -201,6 +264,8 @@ async function loadStats(maxAge = 60000) {
       "Odświeżanie co minutę · ostatnio " + new Date(now()).toLocaleTimeString("pl-PL");
   } catch {
     if (seq === loadSeq)
+      $("statsRefreshState").textContent = "Nie udało się odświeżyć historii. Wybierz zakres, aby spróbować ponownie.";
+    if (seq === loadSeq)
       $("statsMessage").textContent = "Nie udało się pobrać historii. Sprawdź połączenie i spróbuj ponownie.";
   } finally {
     pendingLoads--;
@@ -208,7 +273,38 @@ async function loadStats(maxAge = 60000) {
 }
 
 export function initStats() {
-  onShowView("stats", loadStats);
+  $("statsMetric").addEventListener("change", () => {
+    activeChart = $("statsMetric").value;
+    selectedPoint = null;
+    drawActiveChart();
+  });
+  $("statsPointIndex").addEventListener("input", () => {
+    selectedPoint = plot?.points[Number($("statsPointIndex").value)] ?? null;
+    drawActiveChart();
+  });
+  for (const id of Object.keys(charts))
+    $(id).addEventListener("pointerdown", (event) => {
+      if (!plot?.points.length) return;
+      const rect = plot.canvas.getBoundingClientRect(),
+        fraction = Math.max(0, Math.min(1, (event.clientX - rect.left - plot.pad.l) / plot.iw));
+      const time = plot.first + fraction * (plot.last - plot.first),
+        index = lowerBound(plot.points, time);
+      const options = [plot.points[index - 1], plot.points[index]].filter(Boolean);
+      const point = options.sort((a, b) => Math.abs(a.czas - time) - Math.abs(b.czas - time))[0];
+      if (Math.abs(point.czas - time) > plot.maxGap / 2) {
+        selectedPoint = null;
+        drawActiveChart();
+        $("statsPoint").textContent =
+          "W tym miejscu jest przerwa w pomiarach. Użyj suwaka, aby wybrać zapisaną próbkę.";
+        return;
+      }
+      selectedPoint = point;
+      drawActiveChart();
+    });
+  onShowView("stats", () => {
+    drawActiveChart();
+    return loadStats();
+  });
   document.querySelectorAll("#statsView .range button").forEach((button) =>
     button.addEventListener("click", () => {
       document.querySelectorAll("#statsView .range button").forEach((x) => x.classList.remove("active"));

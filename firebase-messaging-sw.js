@@ -23,6 +23,7 @@ const SHELL = [
   "icon-512.png",
   "icon-maskable-512.png",
   "js/main.js",
+  "js/overview.js",
   "js/logic.js",
   "js/state.js",
   "js/sensors.js",

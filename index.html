@@ -114,11 +114,15 @@
           </div>
           <div id="connection" class="badge"><span class="dot"></span><span id="connectionText">Łączenie…</span></div>
         </div>
+        <div id="deviceConnections" class="device-connections" aria-label="Łączność urządzeń">
+          <span id="cloudConnection"></span><span id="piConnection"></span><span id="driveConnection"></span
+          ><span id="meterConnection"></span>
+        </div>
         <div id="dataMessage" class="notice" role="status" aria-live="polite"></div>
         <div id="waterSafetyBanner" class="notice warn" role="alert" hidden></div>
         <nav class="tabs" aria-label="Widok aplikacji">
           <button class="tab active" id="overviewTab" type="button" aria-controls="overviewView" aria-pressed="true">
-            Czujniki</button
+            Podgląd</button
           ><button class="tab" id="controlTab" type="button" aria-controls="controlView" aria-pressed="false">
             Sterowanie</button
           ><button class="tab" id="statsTab" type="button" aria-controls="statsView" aria-pressed="false">
@@ -134,12 +138,27 @@
         </button>
         <section id="overviewView">
           <div class="section-heading">
-            <h2>Czujniki</h2>
+            <h2>Podgląd instalacji</h2>
             <p>
               Parametry falownika, woda w zbiorniku i pogoda. Dotknij parametru, aby zobaczyć jego wykres z ostatnich 6
               godzin.
             </p>
           </div>
+          <div class="overview-summary" aria-label="Najważniejsze parametry instalacji">
+            <article class="card summary-tile">
+              <small>Pompa</small><b id="summaryPump">—</b><span id="summaryPumpDetail">Brak potwierdzenia stanu</span>
+            </article>
+            <article class="card summary-tile">
+              <small>Ciśnienie tłoczenia</small><b id="summaryPressure">— bar</b><span>Pomiar przy pompie</span>
+            </article>
+            <article class="card summary-tile">
+              <small>Poziom wody</small><b id="summaryWater">— cm</b><span id="summaryWaterDetail">— % poziomu</span>
+            </article>
+            <article class="card summary-tile">
+              <small>Moc falownika</small><b id="summaryPower">— kW</b><span id="summaryPowerDetail">Brak odczytu</span>
+            </article>
+          </div>
+          <h3 class="detail-heading">Szczegóły pomiarów</h3>
           <div class="grid sensor-grid">
             <article class="card">
               <p class="eyebrow">Falownik</p>
@@ -373,9 +392,10 @@
             <p id="controlModeSummary" class="small control-mode-summary" role="status">
               Tryb ręczny · częstotliwość w Hz
             </p>
+            <div class="primary-stop-row"><button id="stopPump" type="button" class="danger">Stop</button></div>
             <div class="control-grid">
               <div>
-                <label for="controlHz">Częstotliwość zadana</label>
+                <label for="controlHz">Nastawa ręczna (Hz)</label>
                 <div class="frequency-head">
                   <input
                     id="controlHz"
@@ -402,8 +422,7 @@
               </div>
               <div class="control-actions">
                 <button id="startPump" type="button">Start</button
-                ><button id="setFrequency" type="button" class="secondary">Ustaw Hz</button
-                ><button id="stopPump" type="button" class="danger">Stop</button>
+                ><button id="setFrequency" type="button" class="secondary">Ustaw Hz</button>
               </div>
               <p id="stopNote" class="small stop-note" role="status" hidden></p>
             </div>
@@ -413,7 +432,7 @@
             <div class="metrics control-live-metrics">
               <div class="metric"><b id="current">— A</b><small>Prąd</small></div>
               <div class="metric"><b id="voltage">— V</b><small>Napięcie</small></div>
-              <div class="metric"><b id="target">— Hz</b><small>Częstotliwość zadana</small></div>
+              <div class="metric"><b id="target">— Hz</b><small>Nastawa falownika</small></div>
             </div>
           </article>
 
@@ -455,7 +474,7 @@
           <article class="card wide" id="powerLimitCard">
             <p class="eyebrow">Ochrona silnika</p>
             <h2>Limit mocy</h2>
-            <p class="small">Aktywny limit i jego działanie widać przy liczniku mocy powyżej.</p>
+            <p id="limitSettingsSummary" class="small">Oczekiwanie na ustawienia limitu mocy.</p>
             <details class="control-settings" id="powerLimitSettings">
               <summary>Ustaw limit mocy</summary>
               <div class="settings-content">
@@ -503,6 +522,8 @@
             <h2>Niski poziom wody</h2>
             <p id="waterSafetyState" class="notice" role="status">Oczekiwanie na Raspberry</p>
             <p>Aktualny poziom: <b id="waterSafetyLevel">— cm</b></p>
+            <p id="waterThresholdSummary" class="small"></p>
+            <button id="waterAlarmSettings" type="button" class="secondary">Sprawdź dodatkową regułę alarmową</button>
             <details class="control-settings" id="waterSettings">
               <summary>Ustaw progi i powiadomienia</summary>
               <div class="settings-content">
@@ -625,22 +646,16 @@
               ><button type="button" data-days="7">7 dni</button><button type="button" data-days="30">30 dni</button>
             </div>
           </div>
-          <p class="small stats-note">
-            Praca: podsumowanie co minutę w chmurze, pełny zapis co 10 s na Raspberry. Pogoda: osobna historia zależna
-            od trybu.
-          </p>
-          <div id="statsMessage" class="notice" role="status">
-            Próbki pracy pojawią się podczas pracy pompy lub korzystania z aplikacji.
-          </div>
           <p id="statsRefreshState" class="small" role="status">Odświeżanie co minutę podczas oglądania.</p>
-          <div class="stats-grid">
-            <article class="card stat"><small>Średni poziom</small><b id="avgWater">—</b></article>
-            <article class="card stat"><small>Zakres poziomu</small><b id="waterRange">—</b></article>
-            <article class="card stat"><small>Ostatnie napełnianie</small><b id="lastFill">—</b></article>
-            <article class="card stat"><small>Ostatnie opróżnianie</small><b id="lastDrain">—</b></article>
-          </div>
-
-          <article class="card chart">
+          <label for="statsMetric" class="chart-selector">Wybierz parametr wykresu</label>
+          <select id="statsMetric">
+            <option value="waterChart">Poziom wody · %</option>
+            <option value="pressureChart">Ciśnienie tłoczenia · bar</option>
+            <option value="pumpChart">Moc falownika · kW</option>
+            <option value="pumpHzChart">Częstotliwość · Hz</option>
+            <option value="pumpCurrentChart">Prąd falownika · A</option>
+          </select>
+          <article class="card chart" data-stats-chart="waterChart">
             <h2>Poziom wody</h2>
             <canvas id="waterChart" height="230" aria-label="Wykres poziomu wody"></canvas>
             <div class="legend">
@@ -648,7 +663,7 @@
             </div>
           </article>
 
-          <article class="card chart">
+          <article class="card chart" data-stats-chart="pressureChart" hidden>
             <h2>Ciśnienie tłoczenia · bar</h2>
             <p class="small">Zapis co 10 s wyłącznie podczas pracy pompy. Przerwy i brak pomiaru nie są zerami.</p>
             <canvas
@@ -658,21 +673,42 @@
             ></canvas>
             <p id="pressureSummary" class="small" role="status">Brak pomiarów podczas pracy pompy.</p>
           </article>
-          <article class="card chart">
+          <article class="card chart" data-stats-chart="pumpChart" hidden>
             <h2>Moc falownika · kW</h2>
             <canvas id="pumpChart" height="230" aria-label="Wykres mocy falownika w kW"></canvas>
           </article>
-          <article class="card chart">
+          <article class="card chart" data-stats-chart="pumpHzChart" hidden>
             <h2>Częstotliwość falownika · Hz</h2>
             <canvas id="pumpHzChart" height="230" aria-label="Wykres częstotliwości falownika w Hz"></canvas>
           </article>
-          <article class="card chart">
+          <article class="card chart" data-stats-chart="pumpCurrentChart" hidden>
             <h2>Prąd falownika · A</h2>
             <canvas id="pumpCurrentChart" height="230" aria-label="Wykres prądu falownika w A"></canvas>
           </article>
 
-          <article class="card wide">
-            <h2>Czasy napełniania i opróżniania</h2>
+          <div class="card chart-inspector">
+            <p id="statsPoint" role="status">Dotknij wykresu, aby odczytać próbkę.</p>
+            <label for="statsPointIndex">Przeglądaj zapisane próbki</label
+            ><input id="statsPointIndex" type="range" min="0" max="0" value="0" disabled />
+          </div>
+          <details class="card wide">
+            <summary>Podsumowanie zbiornika i informacje o historii</summary>
+            <div class="stats-grid">
+              <article class="card stat"><small>Średni poziom</small><b id="avgWater">—</b></article>
+              <article class="card stat"><small>Zakres poziomu</small><b id="waterRange">—</b></article>
+              <article class="card stat"><small>Ostatnie napełnianie</small><b id="lastFill">—</b></article>
+              <article class="card stat"><small>Ostatnie opróżnianie</small><b id="lastDrain">—</b></article>
+            </div>
+            <p class="small stats-note">
+              Praca: podsumowanie co minutę w chmurze, pełny zapis co 10 s na Raspberry. Pogoda: osobna historia zależna
+              od trybu.
+            </p>
+            <div id="statsMessage" class="notice" role="status">
+              Próbki pracy pojawią się podczas pracy pompy lub korzystania z aplikacji.
+            </div>
+          </details>
+          <details class="card wide">
+            <summary>Czasy napełniania i opróżniania</summary>
             <p class="small">
               Cykl jest wykrywany, gdy poziom zmienia się wyraźnie przez kolejne pomiary. Krótkie wahania czujnika są
               pomijane.
@@ -695,10 +731,10 @@
                 </tbody>
               </table>
             </div>
-          </article>
+          </details>
 
-          <article class="card wide">
-            <h2>Ostatnie próbki</h2>
+          <details class="card wide" id="historyDetails">
+            <summary>Ostatnie próbki</summary>
             <div class="table-wrap">
               <table class="history-table">
                 <thead>
@@ -723,7 +759,7 @@
                 </tbody>
               </table>
             </div>
-          </article>
+          </details>
           <details class="card event-panel">
             <summary>Historia zdarzeń instalacji</summary>
             <ul class="events" id="events">
@@ -734,38 +770,11 @@
         <section id="notesView" hidden>
           <div class="section-heading">
             <h2>Notatki i zadania</h2>
+            <button id="newNote" type="button">Dodaj notatkę</button>
+            <p id="noteStatus" class="small" role="status" aria-live="polite"></p>
             <p>Zapisane w chmurze, dostępne na każdym zalogowanym urządzeniu. Termin jest opcjonalny.</p>
           </div>
-          <form id="noteForm" class="card note-form">
-            <h3 id="noteFormTitle">Nowa notatka</h3>
-            <label for="noteTitle">Temat</label>
-            <input id="noteTitle" maxlength="120" required placeholder="Np. Wymienić dyszę w armacie nr 2" />
-            <label for="noteBody">Szczegóły</label>
-            <textarea id="noteBody" maxlength="2000" rows="3" placeholder="Co trzeba zrobić?"></textarea>
-            <div class="note-date-fields">
-              <div>
-                <label for="noteHours">Przypomnij za (godz.)</label
-                ><input
-                  id="noteHours"
-                  type="number"
-                  min="0.1"
-                  max="8760"
-                  step="0.1"
-                  inputmode="decimal"
-                  placeholder="Np. 3"
-                />
-              </div>
-              <div><label for="noteDue">Albo wybierz termin</label><input id="noteDue" type="datetime-local" /></div>
-            </div>
-            <p class="small">
-              Termin będzie wyróżniony w aplikacji, gdy nadejdzie. Ta zakładka nie wysyła powiadomień w tle.
-            </p>
-            <div class="note-form-actions">
-              <button id="noteSave" type="submit">Zapisz notatkę</button
-              ><button id="noteCancel" type="button" class="secondary" hidden>Anuluj edycję</button>
-            </div>
-            <p id="noteMessage" class="small" role="status" aria-live="polite"></p>
-          </form>
+
           <div class="note-list-head">
             <h3>Do zrobienia</h3>
             <span id="noteOpenCount" class="small"></span>
@@ -775,8 +784,59 @@
             <summary>Wykonane (<span id="noteDoneCount">0</span>)</summary>
             <ul id="noteDoneList" class="note-list"></ul>
           </details>
+          <details id="noteEditorPanel" class="note-editor-panel">
+            <summary>Formularz notatki</summary>
+            <form id="noteForm" class="card note-form">
+              <h3 id="noteFormTitle">Nowa notatka</h3>
+              <label for="noteTitle">Temat</label>
+              <input id="noteTitle" maxlength="120" required placeholder="Np. Wymienić dyszę w armacie nr 2" />
+              <label for="noteBody">Szczegóły</label>
+              <textarea id="noteBody" maxlength="2000" rows="3" placeholder="Co trzeba zrobić?"></textarea>
+              <div class="note-date-fields">
+                <div>
+                  <label for="noteHours">Termin za (godz.)</label
+                  ><input
+                    id="noteHours"
+                    type="number"
+                    min="0.1"
+                    max="8760"
+                    step="0.1"
+                    inputmode="decimal"
+                    placeholder="Np. 3"
+                  />
+                </div>
+                <div><label for="noteDue">Albo wybierz termin</label><input id="noteDue" type="datetime-local" /></div>
+              </div>
+              <p class="small">
+                Termin będzie wyróżniony w aplikacji, gdy nadejdzie. Ta zakładka nie wysyła powiadomień w tle.
+              </p>
+              <div class="note-form-actions">
+                <button id="noteSave" type="submit">Zapisz notatkę</button
+                ><button id="noteCancel" type="button" class="secondary" hidden>Anuluj edycję</button>
+              </div>
+              <p id="noteMessage" class="small" role="status" aria-live="polite"></p>
+            </form>
+          </details>
         </section>
         <section id="alarmsView" hidden>
+          <div class="stats-head">
+            <div>
+              <p class="eyebrow">Dziennik instalacji</p>
+              <h2 id="alarmHistoryHeading">Awarie i ostrzeżenia</h2>
+            </div>
+            <div class="range" aria-label="Filtr alarmów" id="alarmFilter">
+              <button type="button" class="active" data-f="open">Do przejrzenia</button
+              ><button type="button" data-f="awaria">Awarie</button
+              ><button type="button" data-f="ostrzezenie">Ostrzeżenia</button
+              ><button type="button" data-f="all">Wszystkie</button>
+            </div>
+          </div>
+          <div id="alarmMessage" class="notice" role="status"></div>
+          <ul id="alarmList" class="alarm-list"></ul>
+          <button id="ackAll" class="secondary" type="button" hidden>Potwierdź wszystkie zakończone</button>
+
+          <p class="small">Potwierdzenie oznacza przeczytanie alarmu — nie usuwa przyczyny ani blokady START.</p>
+          <h3 class="detail-heading">Konfiguracja powiadomień</h3>
           <details class="card alarm-settings" id="alarmSettingsPanel">
             <summary>Ustawienia alertów, ostrzeżeń i awarii</summary>
             <p id="alarmSettingsSummary" class="small"></p>
@@ -829,21 +889,6 @@
             </div>
             <p id="pushMsg" class="small" aria-live="polite"></p>
           </article>
-          <div class="stats-head">
-            <div>
-              <p class="eyebrow">Dziennik instalacji</p>
-              <h2>Awarie i ostrzeżenia</h2>
-            </div>
-            <div class="range" aria-label="Filtr alarmów" id="alarmFilter">
-              <button type="button" class="active" data-f="open">Do przejrzenia</button
-              ><button type="button" data-f="awaria">Awarie</button
-              ><button type="button" data-f="ostrzezenie">Ostrzeżenia</button
-              ><button type="button" data-f="all">Wszystkie</button>
-            </div>
-          </div>
-          <div id="alarmMessage" class="notice" role="status"></div>
-          <ul id="alarmList" class="alarm-list"></ul>
-          <button id="ackAll" class="secondary" type="button" hidden>Potwierdź wszystkie zakończone</button>
         </section>
       </section>
       <details>

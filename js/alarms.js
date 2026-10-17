@@ -44,6 +44,21 @@ function alarmItem(a) {
     el("h3", { textContent: String(a.tytul || a.typ || "Alarm") }),
     el("p", { textContent: String(a.opis || "") }),
   );
+  if (a.typ === "niskiPoziom")
+    li.append(
+      el("p", {
+        className: "small",
+        textContent:
+          "Reguła powiadomienia — sama nie zatrzymuje pompy. Próg STOP i blokadę sprawdzisz w Sterowaniu → Niski poziom wody.",
+      }),
+    );
+  if (live)
+    li.append(
+      el("p", {
+        className: "small",
+        textContent: "Potwierdzenie odczytania nie usuwa przyczyny ani blokady urządzenia.",
+      }),
+    );
   const foot = el("div", { className: "alarm-foot" });
   if (a.potwierdzono) foot.append("Potwierdził " + (a.potwierdzil || "użytkownik") + ", " + tShort(a.potwierdzono));
   else if (a.poziom !== "info") {
@@ -51,7 +66,7 @@ function alarmItem(a) {
     const b = el("button", {
       type: "button",
       className: "secondary",
-      textContent: "Potwierdź",
+      textContent: "Potwierdź odczytanie",
       disabled: !S.connected,
     });
     b.addEventListener("click", () => ackAlarms([a.id]));

@@ -159,7 +159,7 @@ function renderHeader() {
       : !status
         ? "Oczekiwanie na dane"
         : fresh
-          ? "Dane aktualne"
+          ? "Raspberry: aktualny zapis"
           : "Dane nieaktualne";
   $("connection").classList.toggle("offline", !isLive());
   $("updated").textContent =
@@ -219,7 +219,13 @@ function renderND20() {
 
 function renderWater() {
   const s = S.status,
-    waterFresh = isLive() && s?.sondaPolaczona === true,
+    waterFresh =
+      isLive() &&
+      s?.sondaPolaczona === true &&
+      isFresh(s.aktualizacjaPoziomu, now(), 5000) &&
+      isNum(s.poziomWodyProc) &&
+      s.poziomWodyProc >= 0 &&
+      s.poziomWodyProc <= 100,
     tempFresh = isLive() && s?.temperaturaWodyPolaczona === true,
     water = waterFresh ? s.poziomWodyProc : null,
     pct = isNum(water) ? clamp(water, 0, 100) : 0;

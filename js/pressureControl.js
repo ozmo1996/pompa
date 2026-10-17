@@ -82,6 +82,8 @@ export function renderPressureControl() {
         ? "Automat: " + b.stan
         : "Tryb ręczny — regulator wyłączony";
   $("pressureControlState").classList.toggle("warn", !!b?.awaria || !ready);
+  $("pressureControlState").classList.toggle("status-danger", !!b?.awaria);
+  $("pressureControlState").classList.toggle("status-warning", !b?.awaria && !ready);
   const p = S.status?.cisnienieTloczenia,
     valid = S.connected && p?.polaczony === true && isFresh(p.aktualizacja, now(), A.pressureAgeMs);
   $("pressureControlActual").textContent = fmt(valid ? p.bar : null, " bar");

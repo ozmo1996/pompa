@@ -57,6 +57,120 @@ async function open({ data, seed = {}, clockSkew = 0, sdkFails = false, clock = 
 }
 const writes = (page, p) => page.evaluate((p) => globalThis.__fb.writes.filter((w) => w.path === p), p);
 
+test("UX: wszystkie zakładki dostępne na telefonie, podsumowanie i łączność mają osobne znaczenia", async () => {
+  const data = seedData(),
+    t = Date.now();
+  data.pompa.alarmy = {};
+  data.pompa.status.aktualizacja = t;
+  data.pompa.status.aktualizacjaPoziomu = t;
+  data.pompa.status.cisnienieTloczenia = { bar: 25, napiecieV: 3, polaczony: true, aktualizacja: t };
+  const { page, ctx, errors } = await open({ data });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  for (const width of [320, 360, 390, 1280]) {
+    await page.setViewportSize({ width, height: 844 });
+    const inside = await page.evaluate(() =>
+      [...document.querySelectorAll(".tab")].every((n) => {
+        const r = n.getBoundingClientRect();
+        return r.x >= 0 && r.right <= window.innerWidth && r.y >= 0 && r.bottom <= window.innerHeight;
+      }),
+    );
+    assert.equal(inside, true, "Wszystkie zakładki widoczne: " + width);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.match(await page.textContent("#summaryPressure"), /25.*bar/);
+  assert.match(await page.textContent("#summaryWater"), /160,5.*cm/);
+  assert.match(await page.textContent("#cloudConnection"), /połączona/);
+  assert.match(await page.textContent("#driveConnection"), /odpowiada/);
+  if (process.env.POMPA_UX_CAPTURE) {
+    for (const view of ["overview", "control", "stats", "notes", "alarms"]) {
+      await page.click("#" + view + "Tab");
+      await page.evaluate(() => window.scrollTo(0, 0));
+      if (view === "stats") await page.waitForFunction(() => !document.getElementById("statsPointIndex").disabled);
+      await page.screenshot({ path: process.env.POMPA_UX_CAPTURE + "-" + view + ".png" });
+    }
+    await page.click("#overviewTab");
+  }
+  await page.evaluate(() => globalThis.__fb.set("pompa/status/polaczony", false));
+  assert.match(await page.textContent("#piConnection"), /aktualny zapis/);
+  assert.match(await page.textContent("#driveConnection"), /brak potwierdzenia/);
+  assert.match(await page.textContent("#summaryPower"), /—/);
+  await page.evaluate(() => globalThis.__fb.set("pompa/status/cisnienieTloczenia/bar", 45));
+  assert.match(await page.textContent("#summaryPressure"), /—/);
+  assert.equal((await writes(page, "pompa/polecenie")).length, 0);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("UX: alarmy przed konfiguracją, a zadania przed zwiniętym formularzem notatki", async () => {
+  const { page, ctx, errors } = await open();
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#alarmsTab");
+  assert.ok(
+    await page.evaluate(
+      () =>
+        document.getElementById("alarmHistoryHeading").getBoundingClientRect().top <
+        document.getElementById("alarmSettingsPanel").getBoundingClientRect().top,
+    ),
+  );
+  assert.match(await page.textContent("#alarmList"), /nie usuwa przyczyny/);
+  await page.click("#notesTab");
+  assert.equal(await page.isVisible("#noteTitle"), false);
+  await page.click("#newNote");
+  assert.equal(await page.isVisible("#noteTitle"), true);
+  assert.match(await page.textContent('label[for="noteHours"]'), /Termin za/);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("UX: wykres pokazuje jedną serię i dokładną próbkę, puste dane nie udają zera", async () => {
+  const { page, ctx, errors } = await open();
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#statsTab");
+  await page.waitForFunction(() => !document.getElementById("statsPointIndex").disabled);
+  assert.equal(await page.locator("[data-stats-chart]:not([hidden])").count(), 1);
+  await page.focus("#statsPointIndex");
+  await page.press("#statsPointIndex", "End");
+  assert.match(await page.textContent("#statsPoint"), /\d.*%/);
+  assert.equal(await page.isVisible("#historyRows"), false);
+  await page.selectOption("#statsMetric", "pressureChart");
+  assert.equal(await page.isVisible("#waterChart"), false);
+  assert.equal(await page.isDisabled("#statsPointIndex"), true);
+  assert.match(await page.textContent("#statsPoint"), /Brak próbek/);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("UX: blokady są czerwone i progi alarmu nie są mylone z zatrzymaniem", async () => {
+  const data = seedData(),
+    t = Date.now();
+  data.pompa.statusRegulatoraCisnienia = {
+    wersja: 1,
+    aktualizacja: t,
+    ustawieniaId: "domyslne",
+    wlaczony: false,
+    awaria: "Blokada testowa",
+  };
+  data.pompa.statusZabezpieczeniaWody = {
+    wersja: 1,
+    aktualizacja: t,
+    ustawieniaId: "domyslne",
+    awaria: "Niski poziom",
+    wlaczony: false,
+  };
+  const { page, ctx, errors } = await open({ data });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#controlTab");
+  for (const id of ["waterSafetyBanner", "waterSafetyState", "controlModeSummary", "pressureControlState"])
+    assert.equal(await page.locator("#" + id).evaluate((n) => n.classList.contains("status-danger")), true);
+  assert.match(await page.textContent("#waterThresholdSummary"), /nie wysyła STOP/);
+  await page.click("#waterAlarmSettings");
+  assert.equal(await page.isVisible("#rule-niskiPoziom"), true);
+  assert.equal((await writes(page, "pompa/polecenie")).length, 0);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
 test("Sterowanie: obsługa pompy przed ustawieniami, zwinięte formularze i poprawny układ telefonu", async () => {
   const { page, ctx, errors } = await open();
   await page.setViewportSize({ width: 390, height: 844 });
@@ -80,6 +194,13 @@ test("Sterowanie: obsługa pompy przed ustawieniami, zwinięte formularze i popr
   assert.equal(await page.isVisible("#stopPump"), true);
   const stopBox = await page.locator("#stopPump").boundingBox();
   assert.ok(stopBox.y + stopBox.height <= 844, "STOP mieści się na pierwszym ekranie telefonu");
+  assert.ok(
+    await page.locator("#stopPump").evaluate((node) => {
+      const r = node.getBoundingClientRect();
+      return node.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+    }),
+    "Dolna nawigacja nie zasłania STOP-u",
+  );
   assert.equal(await page.isVisible("#waterStopCm"), false);
   assert.equal(await page.isVisible("#pressureSetBar"), false);
   assert.equal(await page.isVisible("#limitKw"), false);
@@ -398,7 +519,7 @@ test("Mokry termometr: kolor korzysta z ustawionego progu i włączenia reguły"
 test("pracująca pompa: wszystkie zakładki działają bez błędów", async () => {
   const { page, ctx, errors } = await open();
   await page.waitForSelector("#dashboard:not([hidden])");
-  assert.match(await page.textContent("#connectionText"), /Dane aktualne/);
+  assert.match(await page.textContent("#connectionText"), /aktualny zapis/);
   assert.equal(await page.textContent("#sensorDriveState"), "Pompa pracuje");
   for (const tab of ["control", "stats", "notes", "alarms", "overview"]) {
     await page.click(`#${tab}Tab`);
@@ -549,9 +670,10 @@ test("Statystyki: automatycznie dociągają nową próbkę i mają osobne wykres
   );
   await page.clock.fastForward(61000);
   await page.waitForFunction((n) => parseInt(document.getElementById("sampleCount").textContent) === n + 1, count);
-  assert.equal(await page.isVisible("#pumpChart"), true);
-  assert.equal(await page.isVisible("#pumpHzChart"), true);
-  assert.equal(await page.isVisible("#pumpCurrentChart"), true);
+  for (const chart of ["pumpChart", "pumpHzChart", "pumpCurrentChart"]) {
+    await page.selectOption("#statsMetric", chart);
+    assert.equal(await page.isVisible("#" + chart), true);
+  }
   assert.match(await page.getAttribute("#pumpChart", "aria-label"), /kW/);
   assert.match(await page.textContent("#statsRefreshState"), /ostatnio/);
   assert.deepEqual(errors, []);
@@ -579,6 +701,7 @@ test("Statystyki ciśnienia: wykres, bar i podsumowanie historii pracy", async (
   await page.waitForSelector("#dashboard:not([hidden])");
   await page.click("#statsTab");
   await page.waitForFunction(() => document.getElementById("pressureSummary").textContent.includes("2 próbek"));
+  await page.selectOption("#statsMetric", "pressureChart");
   assert.equal(await page.isVisible("#pressureChart"), true);
   assert.match(await page.textContent("#pressureSummary"), /20.*22.*24/);
   assert.match(await page.textContent("#historyRows"), /24.*bar/);
@@ -619,6 +742,7 @@ test("notatka z terminem zapisuje się w bazie i można ją oznaczyć jako wykon
   await page.waitForSelector("#dashboard:not([hidden])");
   assert.equal(await page.textContent("#waterCm"), "160,5 cm");
   await page.click("#notesTab");
+  await page.click("#newNote");
   await page.fill("#noteTitle", "Przestawić armatkę nr 2");
   await page.fill("#noteBody", "Po 3 godzinach sprawdzić kierunek wiatru.");
   await page.fill("#noteHours", "3");
@@ -719,7 +843,9 @@ test("zły zegar telefonu: świeżość liczona względem czasu serwera", async 
   // telefon spieszy się o 10 min; Firebase zgłasza przesunięcie −10 min
   const skew = 10 * 60000;
   const { page, ctx } = await open({ clockSkew: skew, seed: { serverOffset: -skew } });
-  await page.waitForFunction(() => document.getElementById("connectionText").textContent === "Dane aktualne");
+  await page.waitForFunction(
+    () => document.getElementById("connectionText").textContent === "Raspberry: aktualny zapis",
+  );
   await ctx.close();
 });
 

@@ -1,5 +1,5 @@
 import "../raspberry/water-safety-schema.js";
-import { $, S, fb, dbRef, user, now } from "./state.js";
+import { $, S, fb, dbRef, user, now, showView } from "./state.js";
 import { fmt, isFresh, parseDecimal } from "./logic.js";
 import { showToast } from "./alarms.js";
 const A = globalThis.POMPA_WATER_SAFETY;
@@ -56,11 +56,20 @@ export function renderWaterSafety() {
     confirmed = fresh && b?.ustawieniaId === c.id;
   $("waterSafetyState").textContent = denied
     ? "Brak dostępu do ustawień"
-    : !confirmed
-      ? "Oczekiwanie na potwierdzenie Raspberry"
-      : b.awaria
-        ? "BLOKADA: " + b.awaria
+    : b?.awaria
+      ? "BLOKADA: " + b.awaria
+      : !confirmed
+        ? "Oczekiwanie na potwierdzenie Raspberry"
         : `STOP: ${c.wlaczony ? "włączony" : "wyłączony"} · ostrzeżenia: ${c.ostrzegaj ? "włączone" : "wyłączone"}`;
+  $("waterSafetyState").classList.toggle("status-danger", !!b?.awaria);
+  $("waterSafetyBanner").classList.toggle("status-danger", !!b?.awaria);
+  $("waterSafetyBanner").classList.toggle("status-warning", !b?.awaria);
+  const alarm = S.alarmCfg;
+  $("waterThresholdSummary").textContent =
+    `Zatrzymanie: ${c.wlaczony ? c.stopCm + " cm" : "wyłączone"}. Wcześniejsze ostrzeżenie: ${c.ostrzegaj ? c.ostrzezenieCm + " cm" : "wyłączone"}. ` +
+    (alarm
+      ? `Osobna reguła alarmowa: ${alarm.reguly.niskiPoziom.wlaczony ? "poniżej " + alarm.progi.poziomNiski + "% (" + Math.round(alarm.progi.poziomNiski * 2.5 * 10) / 10 + " cm)" : "wyłączona"}. Ta reguła sama nie wysyła STOP.`
+      : "Ustawienia dodatkowej reguły alarmowej nie zostały wczytane.");
   const cm = A.level(S.status, now());
   $("waterSafetyLevel").textContent = fmt(cm, " cm") + " · " + fmt(cm === null ? null : cm / 2.5, " %");
   const stop = parseDecimal($("waterStopCm").value),
@@ -154,4 +163,13 @@ export function initWaterSafety() {
     });
   $("saveWaterSafety").addEventListener("click", () => save());
   $("resetWaterSafety").addEventListener("click", () => save(true));
+  $("waterAlarmSettings").addEventListener("click", () => {
+    showView("alarms");
+    $("alarmSettingsPanel").open = true;
+    const rule = $("rule-niskiPoziom");
+    if (rule) {
+      rule.closest("details").open = true;
+      rule.scrollIntoView({ block: "center" });
+    }
+  });
 }

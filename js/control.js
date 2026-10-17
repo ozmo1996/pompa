@@ -110,6 +110,13 @@ function renderPower(live) {
 
   const lim = activeLimit(S.limitCfg),
     la = live && s?.limitAktywny === true;
+  $("limitSettingsSummary").textContent = !S.limitCfg
+    ? "Oczekiwanie na ustawienia limitu mocy."
+    : S.limitCfg.wlaczony === false
+      ? "Wyłączony — brak automatycznego ograniczania mocy tą funkcją."
+      : lim === null
+        ? "Nieprawidłowe ustawienia limitu — sprawdź konfigurację."
+        : `Włączony · limit ${fmt(lim, " kW")} · minimum ${fmt(S.limitCfg.minHz, " Hz")}. ${la ? "Obecnie ogranicza częstotliwość." : "Stan działania widać przy liczniku mocy."}`;
   $("gLimit").style.display = lim === null ? "none" : "";
   if (lim !== null) $("gLimit").style.transform = `rotate(${(90 - gAng(lim)).toFixed(1)}deg)`;
   $("limitState").hidden = lim === null;
@@ -327,6 +334,7 @@ export function renderControl(live = isLive()) {
     : pressureMode()
       ? "Automat ciśnienia · cel " + fmt(S.pressureCfg?.bar, " bar") + " · ustawienia poniżej"
       : "Tryb ręczny · częstotliwość w Hz";
+  $("controlModeSummary").classList.toggle("status-danger", !!S.pressureBackend?.awaria);
   $("hz").textContent = fmt(s?.czestotliwoscWyjsciowa);
   $("current").textContent = fmt(s?.prad, " A");
   $("voltage").textContent = fmt(s?.napiecie, " V");

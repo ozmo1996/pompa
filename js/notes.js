@@ -6,9 +6,13 @@ let notes = [],
   busy = false,
   denied = false;
 const dateText = (time) => new Date(time).toLocaleString("pl-PL", { dateStyle: "medium", timeStyle: "short" });
-const message = (text) => ($("noteMessage").textContent = text);
+const message = (text) => {
+  $("noteMessage").textContent = text;
+  $("noteStatus").textContent = text;
+};
 
 function resetForm() {
+  $("noteEditorPanel").open = false;
   editing = null;
   $("noteForm").reset();
   $("noteFormTitle").textContent = "Nowa notatka";
@@ -58,6 +62,7 @@ function noteItem(note) {
   toggle.addEventListener("click", () => changeNote(note, { wykonane: !note.wykonane, zmieniono: now() }));
   const edit = el("button", { type: "button", className: "secondary", textContent: "Edytuj", disabled: busy });
   edit.addEventListener("click", () => {
+    $("noteEditorPanel").open = true;
     editing = note.id;
     $("noteTitle").value = note.tytul;
     $("noteBody").value = note.opis || "";
@@ -157,6 +162,18 @@ export function resetNotes() {
 }
 
 export function initNotes() {
+  $("newNote").addEventListener("click", () => {
+    if (editing && !confirm("Przerwać edycję i rozpocząć nową notatkę? Niezapisane zmiany zostaną utracone.")) return;
+    if (!editing && ($("noteTitle").value || $("noteBody").value)) {
+      $("noteEditorPanel").open = true;
+      $("noteTitle").focus();
+      return;
+    }
+    resetForm();
+    message("");
+    $("noteEditorPanel").open = true;
+    $("noteTitle").focus();
+  });
   $("noteHours").addEventListener("input", () => {
     if ($("noteHours").value) $("noteDue").value = "";
   });
