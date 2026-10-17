@@ -27,7 +27,10 @@ function createGateway({ authorize, streamUrl, mime, allowedOrigin, maxClients =
     // Rezerwujemy także autoryzowane połączenia w trakcie weryfikacji, bez nieograniczonej kolejki.
     if (clients >= maxClients) return res.writeHead(429).end();
     clients++;
-    let body, timer;
+    let body,
+      timer,
+      authTimer,
+      verified = false;
     const abort = new globalThis.AbortController();
     const closed = () => {
       abort.abort();
@@ -35,9 +38,16 @@ function createGateway({ authorize, streamUrl, mime, allowedOrigin, maxClients =
     };
     res.once("close", closed);
     try {
-      const user = await authorize(token);
+      const user = await Promise.race([
+        authorize(token),
+        new Promise((_, reject) => {
+          authTimer = setTimeout(() => reject(new Error("Weryfikacja przekroczyła limit czasu")), 8000);
+        }),
+      ]);
+      clearTimeout(authTimer);
       if (abort.signal.aborted) return;
       if (!user || !Number.isFinite(user.exp) || user.exp * 1000 <= Date.now()) return res.writeHead(403).end();
+      verified = true;
       // Po wygaśnięciu tokenu/15 minutach sesja kończy się; ponowne uruchomienie wymaga weryfikacji.
       timer = setTimeout(closed, Math.min(maxSessionMs, user.exp * 1000 - Date.now()));
       const initialTimeout = setTimeout(closed, 10000);
@@ -48,7 +58,10 @@ function createGateway({ authorize, streamUrl, mime, allowedOrigin, maxClients =
         clearTimeout(initialTimeout);
       }
       if (!upstream.ok || !upstream.body) return res.writeHead(502).end();
-      res.writeHead(200, { "Content-Type": mime });
+      // go2rtc wyznacza dokładny profil H.264 z SPS. Nie podmieniamy go na zgadywany profil.
+      const streamMime = upstream.headers.get("Content-Type") || mime;
+      if (!/^video\/mp4; codecs="avc1\.[a-fA-F0-9]{6}"$/i.test(streamMime)) return res.writeHead(502).end();
+      res.writeHead(200, { "Content-Type": streamMime });
       body = Readable.fromWeb(upstream.body);
       // pipe utrzymuje backpressure; nie przechowujemy całego filmu w pamięci.
       await new Promise((resolve, reject) => {
@@ -60,9 +73,10 @@ function createGateway({ authorize, streamUrl, mime, allowedOrigin, maxClients =
       });
     } catch {
       // Nie wypisujemy tokenu, URL źródła, hasła ani odpowiedzi kamery w logach.
-      if (!res.headersSent && !res.destroyed) res.writeHead(403).end();
+      if (!res.headersSent && !res.destroyed) res.writeHead(verified ? 502 : 403).end();
     } finally {
       clearTimeout(timer);
+      clearTimeout(authTimer);
       closed();
       if (!res.writableEnded) res.end();
       clients--;
