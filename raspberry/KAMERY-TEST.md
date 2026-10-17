@@ -10,6 +10,17 @@ Wszystkie cztery usługi pompy pozostały aktywne. Test na fizycznym telefonie p
 do wykonania przez użytkownika. Certyfikaty wymagają `--statedir`; poprawka istniejącego testu
 jest w `repair-camera-tls.cjs` i restartuje tylko zweryfikowany testowy proces tailscaled.
 
+Profil obrazu zweryfikowany 2026-10-17: dodatkowy strumień `subtype=2`, H.264 Main,
+1280 × 720, 20 kl./s, CBR 1280 kb/s, GOP 20 (klatka kluczowa co sekundę), bez audio.
+Pomiar go2rtc: 82 zdekodowane klatki w 4,1 s; rzeczywisty obraz HD odebrany przez Funnel.
+Główny strumień 1080p i lekki `subtype=1` pozostają bez zmian. Odtwarzacz łagodnie koryguje
+tempo przy odchyleniu bufora; wyświetlany bufor nie jest pomiarem pełnego opóźnienia kamery.
+`tune-camera-test.cjs` zapisuje prywatną kopię ustawień i weryfikuje zapis oraz brak zmian
+głównego strumienia. `camera-profile-test.cjs 2` przełącza wyłącznie testowy go2rtc na HD.
+Pierwszy instalator nadal startuje z profilem 1; po jego ponownym uruchomieniu HD wymaga
+ponownego wybrania profilu 2. Wycofanie obrazu: najpierw `camera-profile-test.cjs 1`,
+następnie `tune-camera-test.cjs restore` w katalogu `/home/pi/pompa-kamery-test`.
+
 Strona testu: `/pompa/beta/kamery/`. Produkcyjny index, style, config i service worker pozostają bez zmian.
 Test nie rejestruje service workera, powiadomień, pulsu pogody ani zapisów do Firebase.
 Logowanie korzysta z tego samego projektu Firebase i istniejącej sesji; wylogowanie z testu wylogowuje
