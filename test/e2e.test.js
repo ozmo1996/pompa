@@ -65,6 +65,9 @@ test("Kamery TEST: izolacja od sterowania, telefon, konfiguracja i brak automaty
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("request", (request) => requests.push(request.url()));
   await page.route(/gstatic\.com\/firebasejs/, (r) => r.fulfill({ contentType: "text/javascript", body: MOCK }));
+  await page.route("**/beta/kamery/connection.js", (r) =>
+    r.fulfill({ contentType: "text/javascript", body: 'export const defaultEndpoint = "";' }),
+  );
   await page.goto(base + "beta/kamery/");
   await page.waitForSelector("#account:not([hidden])");
   assert.match(await page.textContent("#message"), /Brak adresu/);

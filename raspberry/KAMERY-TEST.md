@@ -8,9 +8,17 @@ Test nie rejestruje service workera, powiadomień, pulsu pogody ani zapisów do 
 Logowanie korzysta z tego samego projektu Firebase i istniejącej sesji; wylogowanie z testu wylogowuje
 również zwykłą aplikację w tej samej przeglądarce. Nie należy wpisywać tu hasła kamery.
 
-## Plan połączenia (do wdrożenia po wyborze tunelu)
+## Połączenie testowe
 
 Telefon → HTTPS → oddzielna bramka tylko do odczytu :1986 (localhost) → go2rtc :1984 (localhost) → kamera RTSP.
+
+Wybrany tunel: Tailscale Funnel, tylko na Raspberry. Telefon nie wymaga VPN.
+Instalator `install-camera-test.cjs` umieszcza zweryfikowane binaria we własnym katalogu 0700,
+uruchamia tailscaled w trybie userspace bez roota i bez zmian DNS/tras.
+`start-camera-test.cjs` uruchamia go2rtc i bramkę jako osobne procesy o niższym priorytecie.
+Hasło kamery przekazywane jest jednorazowo przez ukryty `read -rs` i środowisko potomnego procesu,
+nie zapisuje się go do konfiguracji. Nie wpisywać hasła w linię poleceń ani w link przeglądarki.
+Procesy NIE startują po restarcie Raspberry. To celowy zakres pierwszego, odwracalnego testu.
 
 - Bez przekierowania portów routera, publicznego RTSP i panelu administracyjnego go2rtc.
 - Token Firebase wysyłany w nagłówku Authorization, nigdy w URL, localStorage lub logach aplikacji.
@@ -43,8 +51,9 @@ anonimowego publicznego podglądu. Nie zmieniać obecnych usług pompy i nie res
 ## Wycofanie
 
 1. Wrócić do `/pompa/` — produkcja nie ma zależności od prototypu.
-2. Wyłączyć osobny tunel kamer oraz `sudo systemctl disable --now pompa-kamery-test` i osobne go2rtc testowe,
-   jeśli zostały zainstalowane. Nie zatrzymywać żadnej usługi `pompa`, `pompa-alarmy`, `pompa-nd20`.
+2. Uruchomić `node /home/pi/pompa-kamery-test/stop-camera-test.cjs`. Skrypt sprawdza PID i dokładny
+   argument procesu w `/proc` przed wysłaniem SIGTERM; zatrzymuje tylko bramkę, go2rtc i testowy tailscaled.
+   Nie usuwa plików ani danych. Nie zatrzymywać usług `pompa`, `pompa-alarmy`, `pompa-nd20`.
 3. Cofnąć commit dodający wyłącznie `beta/kamery/`, kod i dokumentację testu. Niczego nie kasować z historii pomiarów.
 
 ## Kryteria odbioru przed wdrożeniem produkcyjnym

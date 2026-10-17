@@ -1,4 +1,5 @@
 import { normalizeEndpoint, appendChunk } from "./camera-logic.js";
+import { defaultEndpoint } from "./connection.js";
 
 const $ = (id) => document.getElementById(id);
 const video = $("cameraVideo");
@@ -10,7 +11,7 @@ let auth,
   generation = 0;
 const text = (message) => ($("message").textContent = message);
 try {
-  endpoint = normalizeEndpoint(localStorage.getItem("pompaCameraTestEndpoint") || "");
+  endpoint = normalizeEndpoint(localStorage.getItem("pompaCameraTestEndpoint") || defaultEndpoint);
 } catch {}
 $("endpoint").value = endpoint;
 
