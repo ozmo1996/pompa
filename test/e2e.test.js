@@ -57,6 +57,69 @@ async function open({ data, seed = {}, clockSkew = 0, sdkFails = false, clock = 
 }
 const writes = (page, p) => page.evaluate((p) => globalThis.__fb.writes.filter((w) => w.path === p), p);
 
+test("Ciśnienie na tłoczeniu: pomiar, błędny sygnał, rozłączenie i ręczny wybór do tabeli", async () => {
+  const { page, ctx, errors } = await open();
+  await page.waitForSelector("#dashboard:not([hidden])");
+  assert.equal(await page.textContent("#dischargePressure"), "—");
+  await page.evaluate(() =>
+    globalThis.__fb.set("pompa/status/cisnienieTloczenia", {
+      bar: 32,
+      napiecieV: 3.7,
+      polaczony: true,
+      aktualizacja: Date.now(),
+    }),
+  );
+  await page.waitForFunction(() => document.getElementById("dischargePressure").textContent === "32");
+  assert.equal(await page.textContent("#dischargeVoltage"), "3,7 V");
+  assert.equal(await page.textContent("#valvePressure"), "32 bar");
+  await page.check("#manualPressureOverride");
+  await page.fill("#manualWaterPressure", "28");
+  await page.locator("#waterPressureForm button[type=submit]").click();
+  assert.equal(await page.textContent("#valvePressure"), "28 bar");
+  assert.equal(await page.textContent("#dischargePressure"), "32");
+  await page.uncheck("#manualPressureOverride");
+  assert.equal(await page.textContent("#valvePressure"), "32 bar");
+  if (process.env.POMPA_PRESSURE_CAPTURE)
+    await page
+      .locator("#dischargePressure")
+      .locator("xpath=ancestor::article")
+      .screenshot({ path: process.env.POMPA_PRESSURE_CAPTURE });
+  await page.evaluate(() =>
+    globalThis.__fb.set("pompa/status/cisnienieTloczenia", {
+      bar: null,
+      napiecieV: 0,
+      polaczony: true,
+      aktualizacja: Date.now(),
+      blad: "Sygnał poza zakresem 0,5–4,5 V",
+    }),
+  );
+  await page.waitForFunction(() => document.getElementById("dischargePressure").textContent === "—");
+  assert.match(await page.textContent("#dischargePressureState"), /poza zakresem/);
+  assert.equal(await page.textContent("#dischargeVoltage"), "0 V");
+  await page.evaluate(() =>
+    globalThis.__fb.set("pompa/status/cisnienieTloczenia", {
+      bar: 32,
+      napiecieV: 3.7,
+      polaczony: false,
+      aktualizacja: Date.now(),
+    }),
+  );
+  await page.waitForFunction(() => document.getElementById("dischargeVoltage").textContent === "— V");
+  assert.equal(await page.textContent("#dischargePressure"), "—");
+  await page.evaluate(() =>
+    globalThis.__fb.set("pompa/status/cisnienieTloczenia", {
+      bar: 32,
+      napiecieV: 3.7,
+      polaczony: true,
+      aktualizacja: Date.now() - 60000,
+    }),
+  );
+  assert.equal(await page.textContent("#dischargePressure"), "—");
+  assert.equal((await writes(page, "pompa/polecenie")).length, 0);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
 test("600 ECO: ciśnienie ręczne, czujnik, wygaśnięcie i nieaktualna pogoda", async () => {
   const { page, ctx, errors } = await open({ clock: true });
   await page.setViewportSize({ width: 390, height: 844 });

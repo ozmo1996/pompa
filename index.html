@@ -161,6 +161,17 @@
               </div>
               <p id="sensorDriveNote" class="small"></p>
             </article>
+            <article class="card">
+              <p class="eyebrow">N4AIA04 · V1 (0–5 V)</p>
+              <h2>Ciśnienie na tłoczeniu</h2>
+              <div class="value"><span id="dischargePressure">—</span> <span class="unit">bar</span></div>
+              <p id="dischargePressureState" class="small" role="status">Oczekiwanie na pomiar</p>
+              <p class="small">Sygnał czujnika: <b id="dischargeVoltage">— V</b></p>
+              <p class="small">
+                Zakres 0–40 bar · 0,5–4,5 V · odczyt co 10 s. Pomiar przy pompie może różnić się od ciśnienia przy
+                armacie.
+              </p>
+            </article>
             <article class="card water">
               <div>
                 <p class="eyebrow">Zbiornik</p>
@@ -308,6 +319,10 @@
                 <div><small>Zalecana konfiguracja</small><b id="valveResult" role="status">Brak wskazówki</b></div>
               </div>
               <p id="valvePressureSource" class="small"></p>
+              <label id="manualPressureOverrideBox" class="small" hidden
+                ><input id="manualPressureOverride" type="checkbox" /> Dla tabeli użyj ręcznego pomiaru przy armacie
+                zamiast czujnika na tłoczeniu</label
+              >
               <form id="waterPressureForm">
                 <label for="manualWaterPressure">Ciśnienie z manometru (bar)</label>
                 <div class="valve-pressure-input">

@@ -22,6 +22,7 @@ const { progi: P } = CFG;
 let manualPressure = null;
 const MANUAL_PRESSURE_MS = 15 * 60000;
 export function initSensors() {
+  $("manualPressureOverride").addEventListener("change", renderWeather);
   const head = el("tr", {}, el("th", { scope: "col", textContent: "Mokry °C / bar" }));
   head.append(...PRESSURES.map((p) => el("th", { scope: "col", textContent: String(p) })));
   $("valveTableHead").append(head);
@@ -74,11 +75,13 @@ function renderValves(wb, fresh) {
     sensor.bar >= 0;
   const manualFresh =
     manualPressure && manualPressure.uid === user()?.uid && isFresh(manualPressure.time, now(), MANUAL_PRESSURE_MS);
-  const pressure = sensorFresh ? sensor.bar : manualFresh ? manualPressure.bar : null;
-  $("waterPressureForm").hidden = sensorFresh;
+  const useSensor = sensorFresh && !$("manualPressureOverride").checked;
+  const pressure = useSensor ? sensor.bar : manualFresh ? manualPressure.bar : null;
+  $("manualPressureOverrideBox").hidden = !sensorFresh;
+  $("waterPressureForm").hidden = useSensor;
   $("valvePressure").textContent = fmt(pressure, " bar");
-  $("valvePressureSource").textContent = sensorFresh
-    ? "Aktualny pomiar czujnika"
+  $("valvePressureSource").textContent = useSensor
+    ? "Czujnik na tłoczeniu — uwzględnij spadek ciśnienia do armatki"
     : manualFresh
       ? "Wpis ręczny · " + new Date(manualPressure.time).toLocaleTimeString("pl-PL")
       : manualPressure
@@ -115,6 +118,18 @@ function renderValves(wb, fresh) {
     : "Brak aktualnego punktu do zaznaczenia — tabelę można przeglądać niezależnie od odczytów.";
 }
 
+function renderPressure() {
+  const p = S.status?.cisnienieTloczenia;
+  const fresh = S.connected && !S.denied && p?.polaczony === true && isFresh(p.aktualizacja, now());
+  const valid = fresh && isNum(p.bar) && p.bar >= 0 && p.bar <= 40;
+  $("dischargePressure").textContent = fmt(valid ? p.bar : null);
+  $("dischargeVoltage").textContent = fmt(fresh ? p.napiecieV : null, " V", 2);
+  $("dischargePressureState").textContent = valid
+    ? "Aktualny odczyt · " + new Date(p.aktualizacja).toLocaleTimeString("pl-PL")
+    : fresh
+      ? p.blad || "Nieprawidłowy sygnał czujnika"
+      : "Brak aktualnego odczytu ciśnienia";
+}
 function renderHeader() {
   const { status, connected, denied } = S,
     time = Number(status?.aktualizacja),
@@ -290,5 +305,6 @@ export function renderSensors(live) {
   renderDrive(live);
   renderND20();
   renderWater();
+  renderPressure();
   renderWeather();
 }
