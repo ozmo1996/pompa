@@ -1,6 +1,7 @@
 # Kamery — odwracalny prototyp, niezależny od pompy
 
-Status: kod testowy. Samo opublikowanie strony NIE uruchamia bramki, tunelu ani kamery.
+Status: od wersji 2.29 odtwarzacz dostępny również w głównej aplikacji, w zakładce Kamery.
+Samo opublikowanie strony NIE uruchamia bramki, tunelu ani kamery.
 Nie uznawać testów atrap za potwierdzenie obrazu na telefonie przez LTE.
 
 Weryfikacja rzeczywista 2026-10-17: obraz z kamery odebrany w zalogowanej przeglądarce przez
@@ -21,7 +22,15 @@ Pierwszy instalator nadal startuje z profilem 1; po jego ponownym uruchomieniu H
 ponownego wybrania profilu 2. Wycofanie obrazu: najpierw `camera-profile-test.cjs 1`,
 następnie `tune-camera-test.cjs restore` w katalogu `/home/pi/pompa-kamery-test`.
 
-Strona testu: `/pompa/beta/kamery/`. Produkcyjny index, style, config i service worker pozostają bez zmian.
+Strona testu pozostaje pod `/pompa/beta/kamery/`. Produkcyjny odtwarzacz `js/cameras.js`
+korzysta z istniejącego konta i tej samej bramki. Włącza obraz tylko w widocznej zakładce Kamery,
+przerywa żądanie po zmianie zakładki, wylogowaniu, ukryciu strony i pagehide.
+Po powrocie na ekran może wznowić obraz, chyba że użytkownik zatrzymał go ręcznie.
+Wyjście podczas pobierania tokenu nie może wysłać spóźnionego żądania.
+Każdy widz ma osobne połączenie, maksymalnie dwóch naraz. Bramka przerywa upstream
+po zamknięciu klienta; go2rtc pobiera źródło wyłącznie na żądanie odbiorcy.
+Zakładka nie zapisuje obrazu ani nie wysyła poleceń pompy. Logika bufora wspólna z testem
+jest w `js/cameraLogic.js`. Pozostałe poniższe uwagi o izolacji strony dotyczą prototypu.
 Test nie rejestruje service workera, powiadomień, pulsu pogody ani zapisów do Firebase.
 Logowanie korzysta z tego samego projektu Firebase i istniejącej sesji; wylogowanie z testu wylogowuje
 również zwykłą aplikację w tej samej przeglądarce. Nie należy wpisywać tu hasła kamery.

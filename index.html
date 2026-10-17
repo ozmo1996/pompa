@@ -130,7 +130,9 @@
           ><button class="tab" id="notesTab" type="button" aria-controls="notesView" aria-pressed="false">
             Notatki<span id="notesBadge" class="tab-badge" hidden></span></button
           ><button class="tab" id="alarmsTab" type="button" aria-controls="alarmsView" aria-pressed="false">
-            Alarmy<span id="alarmBadge" class="tab-badge" hidden></span>
+            Alarmy<span id="alarmBadge" class="tab-badge" hidden></span></button
+          ><button class="tab" id="camerasTab" type="button" aria-controls="camerasView" aria-pressed="false">
+            Kamery
           </button>
         </nav>
         <button id="alarmBanner" class="alarm-banner" type="button" hidden>
@@ -375,6 +377,33 @@
               </details>
             </article>
           </div>
+        </section>
+        <section id="camerasView" hidden>
+          <div class="section-heading">
+            <h2>Kamery</h2>
+            <p>Podgląd na żywo — tylko gdy ta zakładka jest otwarta i aplikacja jest na ekranie.</p>
+          </div>
+          <article class="card camera-card">
+            <div class="camera-heading">
+              <h3>Kamera 1</h3>
+              <span id="cameraConnection" role="status">Wyłączony</span>
+            </div>
+            <div class="camera-screen">
+              <video id="cameraVideo" controls playsinline muted aria-label="Obraz z kamery 1"></video>
+              <p id="cameraPlaceholder">Podgląd wyłączony</p>
+            </div>
+            <p id="cameraMessage" role="status" aria-live="polite">Wejdź w zakładkę, aby oglądać obraz.</p>
+            <p id="cameraInfo" class="small" aria-label="Parametry obrazu"></p>
+            <div class="camera-actions">
+              <button id="cameraPlay" type="button">Wznów podgląd</button
+              ><button id="cameraStop" type="button" disabled>Zatrzymaj podgląd</button>
+            </div>
+            <p class="small">
+              HD 720p · bez dźwięku i nagrywania. Opuszczenie zakładki, zablokowanie telefonu lub wylogowanie wyłącza
+              transmisję na tym urządzeniu. Inni użytkownicy mogą nadal oglądać obraz. Maksymalnie 2 jednoczesne
+              podglądy.
+            </p>
+          </article>
         </section>
         <section id="controlView" hidden>
           <div class="section-heading">

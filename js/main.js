@@ -1,5 +1,6 @@
 // Start aplikacji: ładowanie Firebase, logowanie, subskrypcje bazy i odświeżanie widoków.
 import { CFG } from "./logic.js";
+import { initCameras, stopCamera } from "./cameras.js";
 import { renderOverview } from "./overview.js";
 import { initWaterSafety, resetWaterSafety, setWaterSafety } from "./waterSafety.js";
 import { $, S, VIEWS, dbRef, el, fb, isLive, safe, showView } from "./state.js";
@@ -75,6 +76,7 @@ function renderEvents(snapshot) {
 }
 
 function onUser(u) {
+  stopCamera();
   // wyczyść wszystko po poprzednim użytkowniku
   unsub.forEach((fn) => safe(fn));
   unsub = [];
@@ -255,6 +257,7 @@ async function boot() {
   initPush();
   initHeartbeat();
   initLogin();
+  initCameras();
 
   try {
     await loadFirebase();

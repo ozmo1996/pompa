@@ -42,7 +42,7 @@ export function el(tag, props = {}, ...children) {
 }
 
 // ---------- widoki (zakładki) ----------
-export const VIEWS = ["overview", "control", "stats", "notes", "alarms"];
+export const VIEWS = ["overview", "control", "stats", "notes", "alarms", "cameras"];
 const viewHooks = {};
 /** Moduł rejestruje, co zrobić przy pokazaniu swojej zakładki. */
 export const onShowView = (name, fn) => (viewHooks[name] ||= []).push(fn);

@@ -141,6 +141,56 @@
 
 /* ===== 2. Podstawa: kolory, typografia, formularze, karty, zakładki, zbiornik, statystyki ===== */
 
+.camera-card {
+  max-width: 1000px;
+  margin-inline: auto;
+}
+.camera-heading,
+.camera-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.camera-heading h3 {
+  margin: 0;
+}
+.camera-heading {
+  margin-bottom: 16px;
+}
+.camera-actions {
+  justify-content: flex-start;
+  margin-block: 16px;
+}
+.camera-screen {
+  position: relative;
+  aspect-ratio: 16/9;
+  background: #071110;
+  border-radius: 12px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+.camera-screen video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.camera-screen p {
+  position: absolute;
+  pointer-events: none;
+  padding: 20px;
+  text-align: center;
+}
+#cameraMessage {
+  min-height: 1.5em;
+}
+@media (max-width: 500px) {
+  .camera-actions > button {
+    flex: 1;
+  }
+}
 :root {
   color-scheme: dark;
   font-family:

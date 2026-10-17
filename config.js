@@ -1,7 +1,8 @@
 // Jedno źródło konfiguracji dla aplikacji (import w modułach JS) i service workera (importScripts).
 // Plik celowo nie używa import/export, żeby działał w obu kontekstach.
 globalThis.POMPA_CONFIG = Object.freeze({
-  wersja: "2.28",
+  wersja: "2.29",
+  kamera: Object.freeze({ endpoint: "https://pompa-kamery-test.taile69ee5.ts.net" }),
 
   // Przyblizenie misy jako scietego stozka o eliptycznych, podobnych przekrojach.
   zbiornik: Object.freeze({ wysokoscCm: 250, dnoM2: 470, koronaM2: 805 }),
