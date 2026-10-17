@@ -1,4 +1,4 @@
-import { normalizeEndpoint, appendChunk } from "./camera-logic.js";
+import { normalizeEndpoint, appendChunk, removeRange, playbackPlan } from "./camera-logic.js";
 import { defaultEndpoint } from "./connection.js";
 
 const $ = (id) => document.getElementById(id);
@@ -20,6 +20,7 @@ function stop(message = "Podgląd zatrzymany.") {
   active?.abort();
   active = null;
   video.pause();
+  video.playbackRate = 1;
   video.removeAttribute("src");
   video.srcObject = null;
   video.load();
@@ -29,6 +30,7 @@ function stop(message = "Podgląd zatrzymany.") {
   $("stop").disabled = true;
   $("play").disabled = !auth?.currentUser || !endpoint;
   $("connection").textContent = "Wyłączony";
+  $("streamInfo").textContent = "";
   text(message);
 }
 
@@ -45,6 +47,11 @@ async function play() {
   let lastFrame = Date.now();
   const timeout = setInterval(() => {
     if (Date.now() - lastFrame > 15000) stop("Brak świeżego obrazu. Sprawdź kamerę lub połączenie i spróbuj ponownie.");
+    if (active && video.videoWidth && video.buffered.length) {
+      const gap = Math.max(0, video.buffered.end(video.buffered.length - 1) - video.currentTime);
+      $("streamInfo").textContent =
+        `${video.videoWidth} × ${video.videoHeight} · H.264 · bufor ${gap.toFixed(1).replace(".", ",")} s`;
+    }
   }, 1000);
   const progress = () => {
     lastFrame = Date.now();
@@ -85,6 +92,7 @@ async function play() {
       controller.signal.addEventListener("abort", () => reject(new Error("Przerwano")), { once: true });
     });
     if (run !== generation) return;
+    let playbackStarted = false;
     const buffer = media.addSourceBuffer(mime),
       reader = response.body.getReader();
     while (!controller.signal.aborted) {
@@ -93,17 +101,19 @@ async function play() {
       await appendChunk(buffer, value, controller.signal);
       if (video.buffered.length) {
         const end = video.buffered.end(video.buffered.length - 1);
-        if (end - video.currentTime > 5) video.currentTime = Math.max(0, end - 1);
+        const start = video.buffered.start(video.buffered.length - 1);
+        const plan = playbackPlan(video.currentTime, start, end, video.playbackRate);
+        if (plan.seek !== null) video.currentTime = plan.seek;
+        video.playbackRate = plan.rate;
         const cutoff = video.currentTime - 15;
         if (cutoff > 0 && buffer.buffered.length && buffer.buffered.start(0) < cutoff) {
-          await new Promise((resolve) => {
-            buffer.addEventListener("updateend", resolve, { once: true });
-            buffer.remove(0, cutoff);
-          });
+          await removeRange(buffer, 0, cutoff, controller.signal);
         }
       }
-      if (video.paused && video.readyState >= 2)
+      if (!playbackStarted && video.readyState >= 2) {
+        playbackStarted = true;
         video.play().catch(() => text("Naciśnij przycisk odtwarzania na obrazie."));
+      }
     }
     if (run === generation) stop("Transmisja zakończona. Możesz uruchomić ją ponownie.");
   } catch (error) {

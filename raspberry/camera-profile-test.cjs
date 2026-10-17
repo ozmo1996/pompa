@@ -18,7 +18,7 @@ const dir = '/home/pi/pompa-kamery-test';
   for (let i = 0; i < 60 && fs.existsSync(procPath); i++) await new Promise(resolve => setTimeout(resolve, 100));
   if (fs.existsSync(procPath)) throw new Error('Stary proces nadal dziala');
   const log = fs.openSync(dir + '/go2rtc.log', 'a', 0o600);
-  const proc = child.spawn(dir + '/go2rtc', ['-config', dir + '/go2rtc.yaml'], { cwd: dir, detached: true,
+  const proc = child.spawn('nice', ['-n', '19', dir + '/go2rtc', '-config', dir + '/go2rtc.yaml'], { cwd: dir, detached: true,
     stdio: ['ignore', log, log], env: { PATH: process.env.PATH, HOME: '/home/pi', CAMERA_TEST_URL: url.toString() }
   });
   proc.unref(); fs.closeSync(log);
