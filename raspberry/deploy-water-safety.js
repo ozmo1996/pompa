@@ -39,13 +39,24 @@ async function deploy() {
   const proposed = structuredClone(current);
   proposed.rules.pompa.ustawienia.zabezpieczenieWody = require("./water-safety-rules").buildWaterSafetyRules();
   const etag = r.headers.get("etag");
-  if (!etag) throw Error("Brak ETag — przerwano, aby nie nadpisać równoległej zmiany");
+  const writeHeaders = { ...headers, "Content-Type": "application/json" };
+  if (etag) writeHeaders["if-match"] = etag;
+  else {
+    // Endpoint reguł tego projektu nie zwraca ETag. Jak w poprzednich wdrożeniach:
+    // ponownie porównaj całość bezpośrednio przed zapisem; zachowaj kopię i inne gałęzie.
+    const again = await fetch(url, { headers });
+    if (!again.ok || JSON.stringify(await again.json()) !== JSON.stringify(current))
+      throw Error("Reguły zmieniły się w trakcie wdrożenia — przerwano");
+  }
   const write = await fetch(url, {
     method: "PUT",
-    headers: { ...headers, "Content-Type": "application/json", "if-match": etag },
+    headers: writeHeaders,
     body: JSON.stringify(proposed),
   });
   if (!write.ok) throw Error("Zapis reguł: " + write.status);
+  const verified = await fetch(url, { headers });
+  if (!verified.ok || JSON.stringify(await verified.json()) !== JSON.stringify(proposed))
+    throw Error("Weryfikacja zapisanych reguł nie powiodła się");
   const admin = require("firebase-admin");
   admin.initializeApp({
     credential: admin.credential.cert(service),
