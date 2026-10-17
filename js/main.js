@@ -2,6 +2,13 @@
 import { CFG } from "./logic.js";
 import { $, S, VIEWS, dbRef, el, fb, isLive, safe, showView } from "./state.js";
 import { renderSensors, initSensors } from "./sensors.js";
+import {
+  initPressureControl,
+  resetPressureControl,
+  setPressureConfig,
+  setPressureBackend,
+  pressureConfigDenied,
+} from "./pressureControl.js";
 import { fillLimit, initControl, onCommandUpdate, renderControl, resetControl, syncFromStatus } from "./control.js";
 import { initStats, resetStats } from "./stats.js";
 import { resetHistory } from "./history.js";
@@ -70,6 +77,7 @@ function onUser(u) {
   unsub = [];
   Object.assign(S, { status: null, limitCfg: null, alarms: [], connected: false, denied: false });
   resetControl();
+  resetPressureControl();
   resetHistory();
   resetStats();
   resetNotes();
@@ -121,6 +129,21 @@ function onUser(u) {
     render();
   });
   subscribe("pompa/ustawienia/pogoda/aktywnaDo", (s) => setWeatherActiveUntil(s.val()));
+  subscribe(
+    "pompa/ustawienia/regulatorCisnienia",
+    (s) => {
+      setPressureConfig(s.val());
+      render();
+    },
+    () => {
+      pressureConfigDenied();
+      render();
+    },
+  );
+  subscribe("pompa/statusRegulatoraCisnienia", (s) => {
+    setPressureBackend(s.val());
+    render();
+  });
   subscribe("pompa/polecenie", (s) => onCommandUpdate(s.val()));
   subscribe(q("pompa/alarmy", 300), setAlarms, alarmsDenied);
   subscribe(
@@ -202,6 +225,7 @@ async function boot() {
   if ("serviceWorker" in navigator && isSecureContext) registerSW().catch(() => {});
   for (const v of VIEWS) $(v + "Tab").addEventListener("click", () => showView(v));
   initControl();
+  initPressureControl();
   initSensors();
   initStats();
   initNotes();

@@ -57,6 +57,103 @@ async function open({ data, seed = {}, clockSkew = 0, sdkFails = false, clock = 
 }
 const writes = (page, p) => page.evaluate((p) => globalThis.__fb.writes.filter((w) => w.path === p), p);
 
+test("Regulator ciśnienia: opcjonalny, zapis nie uruchamia pompy, blokada Hz i start od minimum", async () => {
+  const data = seedData(Date.now()),
+    t = Date.now();
+  const cfg = {
+    wersja: 1,
+    id: "test-pressure-init",
+    wlaczony: false,
+    bar: 25,
+    minHz: 35,
+    maxHz: 50,
+    maxBar: 32,
+    zmieniono: t,
+    zmienil: "test",
+  };
+  data.pompa.ustawienia.regulatorCisnienia = cfg;
+  data.pompa.status.pracuje = false;
+  data.pompa.status.cisnienieTloczenia = { bar: 20, napiecieV: 2.5, polaczony: true, aktualizacja: t };
+  data.pompa.statusRegulatoraCisnienia = {
+    wersja: 1,
+    aktualizacja: t,
+    ustawieniaId: cfg.id,
+    wlaczony: false,
+    stan: "wyłączony",
+    awaria: "",
+  };
+  const { page, ctx, errors } = await open({ data });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#controlTab");
+  assert.equal(await page.isChecked("#pressureAutoOn"), false);
+  await page.check("#pressureAutoOn");
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.click("#savePressureControl");
+  await page.waitForFunction(() => document.getElementById("pressureControlMessage").textContent.includes("Zapisano"));
+  assert.equal((await writes(page, "pompa/polecenie")).length, 0);
+  assert.equal(await page.isEnabled("#setFrequency"), false);
+  assert.equal(await page.isEnabled("#startPump"), false);
+  await page.evaluate(() => {
+    const c = globalThis.__fb.read("pompa/ustawienia/regulatorCisnienia");
+    globalThis.__fb.set("pompa/statusRegulatoraCisnienia", {
+      wersja: 1,
+      aktualizacja: Date.now(),
+      ustawieniaId: c.id,
+      wlaczony: true,
+      stan: "gotowy",
+      awaria: "",
+    });
+    globalThis.__fb.set("pompa/status/cisnienieTloczenia/aktualizacja", Date.now());
+    globalThis.__fb.set("pompa/status/aktualizacja", Date.now());
+  });
+  await page.waitForFunction(() => !document.getElementById("startPump").disabled);
+  if (process.env.POMPA_CONTROL_CAPTURE)
+    await page.locator("#pressureControlCard").screenshot({ path: process.env.POMPA_CONTROL_CAPTURE });
+  await page.click("#startPump");
+  await page.click("#dlgOk");
+  await page.waitForFunction(() => globalThis.__fb.writes.some((w) => w.path === "pompa/polecenie"));
+  const command = (await writes(page, "pompa/polecenie")).at(-1).value;
+  assert.equal(command.czestotliwosc, 35);
+  await page.evaluate(() => {
+    const c = globalThis.__fb.read("pompa/polecenie");
+    globalThis.__fb.set("pompa/polecenie", { ...c, wykonane: true });
+    globalThis.__fb.set("pompa/status/cisnienieTloczenia/aktualizacja", Date.now() - 4000);
+  });
+  await page.waitForFunction(() => document.getElementById("startPump").disabled);
+  assert.equal(await page.isEnabled("#stopPump"), true);
+  await page.evaluate(() => globalThis.__fb.set("pompa/statusRegulatoraCisnienia/awaria", "Utrata czujnika"));
+  assert.equal(await page.isEnabled("#startPump"), false);
+  assert.equal(await page.isEnabled("#stopPump"), true);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("Regulator ciśnienia: nie pozwala włączyć nowego trybu podczas pracy ani zapisać progu ponad 32 bar", async () => {
+  const data = seedData(Date.now()),
+    t = Date.now();
+  data.pompa.statusRegulatoraCisnienia = {
+    wersja: 1,
+    aktualizacja: t,
+    ustawieniaId: "domyslne",
+    wlaczony: false,
+    stan: "wyłączony",
+    awaria: "",
+  };
+  const { page, ctx, errors } = await open({ data });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#controlTab");
+  await page.fill("#pressureStopBar", "35");
+  await page.click("#savePressureControl");
+  assert.match(await page.textContent("#pressureControlMessage"), /32 bar/);
+  await page.fill("#pressureStopBar", "32");
+  await page.check("#pressureAutoOn");
+  await page.click("#savePressureControl");
+  assert.match(await page.textContent("#pressureControlMessage"), /zatrzymanej/);
+  assert.equal((await writes(page, "pompa/ustawienia/regulatorCisnienia")).length, 0);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
 test("Ciśnienie na tłoczeniu: pomiar, błędny sygnał, rozłączenie i ręczny wybór do tabeli", async () => {
   const { page, ctx, errors } = await open();
   await page.waitForSelector("#dashboard:not([hidden])");

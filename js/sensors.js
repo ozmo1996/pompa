@@ -70,7 +70,7 @@ function renderValves(wb, fresh) {
     S.connected &&
     !S.denied &&
     sensor?.polaczony === true &&
-    isFresh(sensor.aktualizacja, now()) &&
+    isFresh(sensor.aktualizacja, now(), 3000) &&
     isNum(sensor.bar) &&
     sensor.bar >= 0;
   const manualFresh =
@@ -120,7 +120,7 @@ function renderValves(wb, fresh) {
 
 function renderPressure() {
   const p = S.status?.cisnienieTloczenia;
-  const fresh = S.connected && !S.denied && p?.polaczony === true && isFresh(p.aktualizacja, now());
+  const fresh = S.connected && !S.denied && p?.polaczony === true && isFresh(p.aktualizacja, now(), 3000);
   const valid = fresh && isNum(p.bar) && p.bar >= 0 && p.bar <= 40;
   $("dischargePressure").textContent = fmt(valid ? p.bar : null);
   $("dischargeVoltage").textContent = fmt(fresh ? p.napiecieV : null, " V", 2);

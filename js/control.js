@@ -17,6 +17,7 @@ import {
   validateLimit,
 } from "./logic.js";
 import { $, S, dbRef, el, fb, isLive, now, safe, user } from "./state.js";
+import { pressureMode, pressureCanStart, renderPressureControl } from "./pressureControl.js";
 
 const { silnik: M, progi: P } = CFG;
 
@@ -228,9 +229,13 @@ const message = (t) => ($("commandMessage").textContent = t);
 async function sendCommand(action) {
   const stop = action === "stop";
   if (stop ? !canStop() : cmd.busy || !canDrive()) return;
+  if (!stop && action === "czestotliwosc" && pressureMode())
+    return message("Automat ciśnienia jest włączony — ręczna zmiana Hz zablokowana.");
+  if (action === "start" && !pressureCanStart())
+    return message("Regulator ciśnienia nie potwierdził gotowości. Sprawdź pomiar i blokadę w karcie automatu.");
   let hz = null;
   if (!stop) {
-    hz = validHz($("controlHz").value);
+    hz = pressureMode() && action === "start" ? S.pressureCfg.minHz : validHz($("controlHz").value);
     if (hz === null) {
       message(`Podaj częstotliwość od 0 do ${M.maxHz} Hz.`);
       $("controlHz").focus();
@@ -246,14 +251,19 @@ async function sendCommand(action) {
     if (starting || a.items.length) {
       const ok = await askConfirm({
         title: starting ? "Uruchomić pompę?" : "Potwierdź zmianę częstotliwości",
-        lead: starting ? `Pompa ruszy i rozpędzi się do ${f1(hz)} Hz.` : `Nowa częstotliwość zadana: ${f1(hz)} Hz.`,
+        lead:
+          starting && pressureMode()
+            ? `Pompa ruszy od ${f1(hz)} Hz. Automat będzie utrzymywał ${S.pressureCfg.bar} bar w zakresie ${S.pressureCfg.minHz}–${S.pressureCfg.maxHz} Hz, z progiem STOP ${S.pressureCfg.maxBar} bar. Pierwszy rozruch wymaga nadzoru i manometru.`
+            : starting
+              ? `Pompa ruszy i rozpędzi się do ${f1(hz)} Hz.`
+              : `Nowa częstotliwość zadana: ${f1(hz)} Hz.`,
         items: a.items,
         ok: starting ? "Uruchom" : a.hot ? "Tak, zmień" : "Zmień",
         hot: a.hot,
       });
       if (!ok) return message("Anulowano — polecenie nie zostało wysłane.");
       // Okno mogło być otwarte długo — sprawdź stan ponownie przed wysłaniem.
-      if (cmd.busy || !canDrive()) {
+      if (cmd.busy || !canDrive() || (action === "start" && !pressureCanStart())) {
         message("Stan pompy lub połączenia zmienił się — polecenie nie zostało wysłane.");
         return renderControl();
       }
@@ -321,10 +331,10 @@ export function renderControl(live = isLive()) {
         ? "Brak zgłoszonej awarii"
         : "Oczekiwanie na potwierdzenie stanu";
   const inputs = u && live && s?.polaczony === true && !cmd.busy;
-  $("controlHz").disabled = !inputs;
-  $("controlHzSlider").disabled = !inputs;
-  $("startPump").disabled = !drive;
-  $("setFrequency").disabled = !drive;
+  $("controlHz").disabled = !inputs || pressureMode();
+  $("controlHzSlider").disabled = !inputs || pressureMode();
+  $("startPump").disabled = !drive || !pressureCanStart();
+  $("setFrequency").disabled = !drive || pressureMode();
   $("stopPump").disabled = !stop;
   $("stopNote").hidden = !stop || live;
   $("stopNote").textContent =
@@ -332,6 +342,7 @@ export function renderControl(live = isLive()) {
   for (const id of ["limitOn", "limitKw", "limitMinHz", "saveLimit"]) $(id).disabled = !u || S.denied;
   safe(renderPower, live);
   safe(renderPreview);
+  safe(renderPressureControl);
 }
 
 export function initControl() {

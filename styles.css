@@ -2259,3 +2259,53 @@ header {
     font-size: 1.15rem;
   }
 }
+#pressureControlCard {
+  scroll-margin-top: 85px;
+}
+#pressureControlCard .metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+#pressureControlCard .metric:last-child {
+  grid-column: auto;
+}
+#pressureControlCard .metric small {
+  display: block;
+  margin-top: 5px;
+}
+#pressureControlCard .pressure-mode-switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+}
+#pressureControlCard .pressure-mode-switch input {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  flex: 0 0 24px;
+  accent-color: #d6f48a;
+}
+#pressureControlCard .control-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+#pressureControlCard .control-grid label {
+  margin: 0;
+}
+#pressureControlCard .control-grid input {
+  margin-top: 8px;
+}
+#savePressureControl {
+  margin-top: 20px;
+}
+@media (max-width: 600px) {
+  #pressureControlCard .control-grid {
+    grid-template-columns: 1fr;
+  }
+  #pressureControlCard .metric b {
+    font-size: 1.15rem;
+  }
+}
