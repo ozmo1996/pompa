@@ -2262,6 +2262,97 @@ header {
 #pressureControlCard {
   scroll-margin-top: 85px;
 }
+
+/* Sterowanie: najpierw obsługa pompy, potem monitoring i rozwijane ustawienia. */
+body:has(#controlView:not([hidden])) .hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 14px;
+}
+body:has(#controlView:not([hidden])) .hero h1,
+body:has(#controlView:not([hidden])) .hero .eyebrow {
+  display: none;
+}
+body:has(#controlView:not([hidden])) .hero p.small {
+  margin: 0;
+}
+.pump-command-card {
+  border-color: #66864d;
+  margin-top: 0;
+}
+.pump-status-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+.pump-status-head h2 {
+  margin: 0;
+}
+.pump-status-head .value {
+  flex-shrink: 0;
+  font-size: 32px;
+}
+.pump-status-head #fault {
+  margin: 8px 0 0;
+}
+.control-live-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line, #29443a);
+}
+.control-mode-summary {
+  margin: 0 0 10px;
+  color: #d6f48a;
+}
+.control-live-metrics .metric:last-child {
+  grid-column: auto;
+}
+.control-live-metrics .metric b {
+  font-size: 1.1rem;
+}
+.control-live-metrics .metric small {
+  display: block;
+  margin-top: 5px;
+}
+.control-settings-heading {
+  margin-top: 32px;
+}
+.control-settings > summary {
+  padding: 14px 0;
+  cursor: pointer;
+  color: var(--text, #e9f4ed);
+  font-weight: 650;
+}
+.control-settings > summary:focus-visible {
+  outline: 2px solid #d6f48a;
+  outline-offset: 4px;
+}
+.settings-content {
+  padding-top: 12px;
+  border-top: 1px solid var(--line, #29443a);
+}
+.control-settings .limit-box {
+  border-top: 0;
+  margin: 0;
+  padding: 0;
+}
+@media (max-width: 420px) {
+  .pump-status-head h2 {
+    font-size: 1.1rem;
+  }
+  .pump-status-head .value {
+    font-size: 26px;
+  }
+  .control-live-metrics .metric b {
+    font-size: 1rem;
+  }
+}
 #pressureControlCard .metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

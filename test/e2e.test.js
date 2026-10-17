@@ -57,11 +57,47 @@ async function open({ data, seed = {}, clockSkew = 0, sdkFails = false, clock = 
 }
 const writes = (page, p) => page.evaluate((p) => globalThis.__fb.writes.filter((w) => w.path === p), p);
 
+test("Sterowanie: obsługa pompy przed ustawieniami, zwinięte formularze i poprawny układ telefonu", async () => {
+  const { page, ctx, errors } = await open();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#controlTab");
+  const positions = await page.evaluate(() => {
+    const y = (id) => document.getElementById(id).getBoundingClientRect().top;
+    return {
+      pump: y("pumpControlCard"),
+      power: y("powerLimitCard"),
+      water: y("waterSafetyCard"),
+      pressure: y("pressureControlCard"),
+      overflow: document.documentElement.scrollWidth > window.innerWidth,
+      ids: [...document.querySelectorAll("[id]")].map((x) => x.id),
+    };
+  });
+  for (const key of ["power", "water", "pressure"]) assert.ok(positions.pump < positions[key]);
+  assert.equal(positions.overflow, false);
+  assert.equal(new Set(positions.ids).size, positions.ids.length);
+  assert.equal(await page.isVisible("#startPump"), true);
+  assert.equal(await page.isVisible("#stopPump"), true);
+  const stopBox = await page.locator("#stopPump").boundingBox();
+  assert.ok(stopBox.y + stopBox.height <= 844, "STOP mieści się na pierwszym ekranie telefonu");
+  assert.equal(await page.isVisible("#waterStopCm"), false);
+  assert.equal(await page.isVisible("#pressureSetBar"), false);
+  assert.equal(await page.isVisible("#limitKw"), false);
+  if (process.env.POMPA_LAYOUT_CAPTURE) {
+    await page.screenshot({ path: process.env.POMPA_LAYOUT_CAPTURE });
+  }
+  await page.click("#powerLimitSettings > summary");
+  assert.equal(await page.isVisible("#limitKw"), true);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
 test("Zabezpieczenie wody: niezależne opcje, walidacja, cm/% i zapis bez rozruchu", async () => {
   const { page, ctx, errors } = await open();
   await page.waitForSelector("#dashboard:not([hidden])");
   await page.click("#controlTab");
   assert.equal(await page.isChecked("#waterStopOn"), false);
+  await page.click("#waterSettings > summary");
   await page.check("#waterStopOn");
   await page.check("#waterWarnOn");
   await page.fill("#waterStopCm", "40");
@@ -148,6 +184,7 @@ test("Regulator ciśnienia: opcjonalny, zapis nie uruchamia pompy, blokada Hz i 
   await page.waitForSelector("#dashboard:not([hidden])");
   await page.click("#controlTab");
   assert.equal(await page.isChecked("#pressureAutoOn"), false);
+  await page.click("#pressureSettings > summary");
   await page.check("#pressureAutoOn");
   page.once("dialog", (dialog) => dialog.accept());
   await page.click("#savePressureControl");
@@ -204,6 +241,7 @@ test("Regulator ciśnienia: nie pozwala włączyć nowego trybu podczas pracy an
   const { page, ctx, errors } = await open({ data });
   await page.waitForSelector("#dashboard:not([hidden])");
   await page.click("#controlTab");
+  await page.click("#pressureSettings > summary");
   await page.fill("#pressureStopBar", "35");
   await page.click("#savePressureControl");
   assert.match(await page.textContent("#pressureControlMessage"), /32 bar/);

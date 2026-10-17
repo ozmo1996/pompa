@@ -360,129 +360,19 @@
         <section id="controlView" hidden>
           <div class="section-heading">
             <h2>Sterowanie pompą</h2>
-            <p>Stan napędu, częstotliwość i ograniczenie mocy.</p>
           </div>
-          <div class="grid drive-grid">
-            <article class="card">
-              <p class="eyebrow">Falownik</p>
-              <h2 id="pumpState">Oczekiwanie na połączenie</h2>
-              <div class="value"><span id="hz">—</span> <span class="unit">Hz</span></div>
-              <p class="small" id="fault">Brak danych o stanie urządzenia</p>
-            </article>
-            <article class="card">
-              <p class="eyebrow">Parametry pracy</p>
-              <div class="metrics">
-                <div class="metric"><b id="current">— A</b><small>Prąd</small></div>
-                <div class="metric"><b id="voltage">— V</b><small>Napięcie</small></div>
-                <div class="metric"><b id="target">— Hz</b><small>Częstotliwość zadana</small></div>
-              </div>
-            </article>
-          </div>
-          <article class="card wide" id="waterSafetyCard">
-            <p class="eyebrow">Lokalne zabezpieczenie Raspberry</p>
-            <h2>Niski poziom wody</h2>
-            <p id="waterSafetyState" class="notice" role="status">Oczekiwanie na Raspberry</p>
-            <p>Aktualny poziom: <b id="waterSafetyLevel">— cm</b></p>
-            <div class="alarm-setting-grid">
-              <label class="alarm-setting-field"
-                ><span>Zatrzymuj pompę przy niskim poziomie</span><input id="waterStopOn" type="checkbox"
-              /></label>
-              <label class="alarm-setting-field"
-                ><span>Próg STOP (cm)</span><input id="waterStopCm" type="number" min="1" max="245" step="1" value="25"
-              /></label>
-              <label class="alarm-setting-field"
-                ><span>Ostrzegaj przed niskim poziomem</span><input id="waterWarnOn" type="checkbox"
-              /></label>
-              <label class="alarm-setting-field"
-                ><span>Próg ostrzeżenia (cm)</span
-                ><input id="waterWarnCm" type="number" min="6" max="250" step="1" value="50"
-              /></label>
-            </div>
-            <p id="waterSafetyPercents" class="small"></p>
-            <p class="small">
-              Poziom liczony z sondy dla zakresu 0–250 cm, nie procent objętości. Dobierz STOP powyżej minimalnego
-              zanurzenia wlotu pompy, uwzględniając czas zatrzymania i niedokładność kalibracji. 25 i 50 cm to tylko
-              wartości przykładowe.
-            </p>
-            <p class="small">
-              Przy włączonym STOP: poziom ≤ próg lub brak aktualnego pomiaru przez 5 s zatrzymuje pompę. Działa także
-              bez telefonu i internetu, po zapisaniu ustawień na Raspberry. Bez automatycznego ponownego rozruchu.
-              Skasowanie blokady i START wymagają postoju oraz poziomu ponad STOP + 5 cm (jeśli zabezpieczenie jest
-              włączone).
-            </p>
-            <div class="actions">
-              <button id="saveWaterSafety" type="button">Zapisz zabezpieczenie</button
-              ><button id="resetWaterSafety" type="button" class="secondary">Skasuj blokadę</button>
-            </div>
-            <p id="waterSafetyMessage" class="small" role="status"></p>
-          </article>
-          <article class="card wide" id="pressureControlCard">
-            <p class="eyebrow">Opcjonalny automat Raspberry · ciśnienie na tłoczeniu</p>
-            <h2>Utrzymywanie ciśnienia</h2>
-            <p id="pressureControlState" class="notice" role="status">Regulator wyłączony</p>
-            <div class="metrics">
-              <div class="metric"><b id="pressureControlActual">— bar</b><small>Aktualne</small></div>
-              <div class="metric"><b id="pressureControlTarget">—</b><small>Cel</small></div>
-              <div class="metric"><b id="pressureControlHz">— Hz</b><small>Zadane falownikowi</small></div>
-            </div>
-            <label class="pressure-mode-switch"
-              ><input id="pressureAutoOn" type="checkbox" /> Automatycznie dobieraj Hz do ciśnienia</label
-            >
-            <div class="control-grid">
-              <label
-                >Ciśnienie zadane (5–30 bar)<input
-                  id="pressureSetBar"
-                  type="number"
-                  min="5"
-                  max="30"
-                  step="0.1"
-                  value="25"
-                  inputmode="decimal" /></label
-              ><label
-                >Minimalna częstotliwość (Hz)<input
-                  id="pressureMinHz"
-                  type="number"
-                  min="35"
-                  max="49.9"
-                  step="0.1"
-                  value="35" /></label
-              ><label
-                >Maksymalna częstotliwość (Hz)<input
-                  id="pressureMaxHz"
-                  type="number"
-                  min="35.1"
-                  max="50"
-                  step="0.1"
-                  value="50" /></label
-              ><label
-                >Próg STOP (bar, maks. 32)<input
-                  id="pressureStopBar"
-                  type="number"
-                  min="7"
-                  max="32"
-                  step="0.1"
-                  value="32"
-              /></label>
-            </div>
-            <button id="savePressureControl" type="button">Zapisz tryb ciśnienia</button>
-            <p id="pressureControlMessage" class="small" role="status"></p>
-            <details>
-              <summary>Zasady i zabezpieczenia automatu</summary>
-              <p class="small">
-                Zapis nie uruchamia pompy. Nowy tryb włączaj na postoju; Start pozostaje ręczny, od minimalnych Hz.
-                Odczyt co około 1 s, tolerancja celu ±0,3 bar, zmiana najwyżej 0,2 Hz na krok (nie częściej niż co 1 s).
-                Wymagany aktywny limit mocy do 90 kW, który ma pierwszeństwo. Brak lub błąd ciśnienia przez 3 s,
-                przekroczenie progu STOP, błąd falownika albo brak narastania ciśnienia do 2 bar w 10 s powodują
-                zatrzymanie i blokadę. Po blokadzie: wyłącz tryb, poczekaj na potwierdzony postój, usuń przyczynę i
-                włącz ponownie. Bez automatycznego restartu. Wyłączenie trybu pozostawia bieżące Hz — dalsze sterowanie
-                jest ręczne. Pierwszy rozruch wymaga próby pod nadzorem, porównania z manometrem i sprawnego
-                niezależnego zabezpieczenia nadciśnieniowego. Raspberry i RS485 nie zastępują zabezpieczeń sprzętowych.
-              </p>
-            </details>
-          </article>
-          <article class="card wide">
+          <article class="card wide pump-command-card" id="pumpControlCard" aria-label="Sterowanie pompą">
             <p class="eyebrow">Sterowanie falownikiem</p>
-            <h2>Pompa</h2>
+            <div class="pump-status-head">
+              <div>
+                <h2 id="pumpState">Oczekiwanie na połączenie</h2>
+                <p class="small" id="fault">Brak danych o stanie urządzenia</p>
+              </div>
+              <div class="value"><span id="hz">—</span> <span class="unit">Hz</span></div>
+            </div>
+            <p id="controlModeSummary" class="small control-mode-summary" role="status">
+              Tryb ręczny · częstotliwość w Hz
+            </p>
             <div class="control-grid">
               <div>
                 <label for="controlHz">Częstotliwość zadana</label>
@@ -508,7 +398,6 @@
                   aria-label="Częstotliwość zadana"
                 />
                 <div class="frequency-scale"><span>0 Hz</span><span>25 Hz</span><span>50 Hz</span></div>
-                <p class="small">Suwak zmienia wartość co 0,1 Hz. Dokładną wartość możesz też wpisać ręcznie.</p>
                 <p id="controlPreview" class="preview" aria-live="polite"></p>
               </div>
               <div class="control-actions">
@@ -518,39 +407,16 @@
               </div>
               <p id="stopNote" class="small stop-note" role="status" hidden></p>
             </div>
-            <div class="limit-box">
-              <div class="limit-head">
-                <div>
-                  <h3>Automatyczny limit mocy</h3>
-                  <p class="small">
-                    Gdy moc przekroczy limit, Raspberry obniża częstotliwość. Gdy moc spadnie, wraca stopniowo do
-                    częstotliwości zadanej.
-                  </p>
-                </div>
-                <label class="switch" title="Włącz limit mocy"
-                  ><input type="checkbox" id="limitOn" aria-label="Automatyczny limit mocy" /><span></span
-                ></label>
-              </div>
-              <div class="limit-fields">
-                <div>
-                  <label for="limitKw">Limit mocy (kW)</label
-                  ><input id="limitKw" type="number" min="10" max="110" step="1" value="85" inputmode="decimal" />
-                </div>
-                <div>
-                  <label for="limitMinHz">Min. częstotliwość (Hz)</label
-                  ><input id="limitMinHz" type="number" min="0" max="50" step="0.5" value="35" inputmode="decimal" />
-                </div>
-                <button id="saveLimit" type="button" class="secondary">Zapisz limit</button>
-              </div>
-              <p id="limitMsg" class="small">
-                Ustawienia są zapisywane w bazie i działają na Raspberry także przy zamkniętej aplikacji.
-              </p>
-            </div>
             <div id="commandMessage" class="notice" role="status" aria-live="polite">
-              Start i zmiana częstotliwości są dostępne, gdy Raspberry i falownik mają aktualne połączenie. Stop działa
-              zawsze, gdy aplikacja jest połączona z bazą.
+              START i Hz wymagają aktualnego połączenia z falownikiem. STOP wymaga połączenia aplikacji z bazą.
+            </div>
+            <div class="metrics control-live-metrics">
+              <div class="metric"><b id="current">— A</b><small>Prąd</small></div>
+              <div class="metric"><b id="voltage">— V</b><small>Napięcie</small></div>
+              <div class="metric"><b id="target">— Hz</b><small>Częstotliwość zadana</small></div>
             </div>
           </article>
+
           <article class="card power">
             <p class="eyebrow">Licznik mocy</p>
             <div class="power-head">
@@ -580,6 +446,172 @@
                 </div>
               </div>
             </div>
+          </article>
+
+          <div class="section-heading control-settings-heading">
+            <h2>Automatyka i zabezpieczenia</h2>
+            <p>Stan funkcji jest zawsze widoczny. Rozwiń wybraną kartę, aby zmienić ustawienia.</p>
+          </div>
+          <article class="card wide" id="powerLimitCard">
+            <p class="eyebrow">Ochrona silnika</p>
+            <h2>Limit mocy</h2>
+            <p class="small">Aktywny limit i jego działanie widać przy liczniku mocy powyżej.</p>
+            <details class="control-settings" id="powerLimitSettings">
+              <summary>Ustaw limit mocy</summary>
+              <div class="settings-content">
+                <div class="limit-box">
+                  <div class="limit-head">
+                    <div>
+                      <h3>Automatyczny limit mocy</h3>
+                      <p class="small">
+                        Gdy moc przekroczy limit, Raspberry obniża częstotliwość. Gdy moc spadnie, wraca stopniowo do
+                        częstotliwości zadanej.
+                      </p>
+                    </div>
+                    <label class="switch" title="Włącz limit mocy"
+                      ><input type="checkbox" id="limitOn" aria-label="Automatyczny limit mocy" /><span></span
+                    ></label>
+                  </div>
+                  <div class="limit-fields">
+                    <div>
+                      <label for="limitKw">Limit mocy (kW)</label
+                      ><input id="limitKw" type="number" min="10" max="110" step="1" value="85" inputmode="decimal" />
+                    </div>
+                    <div>
+                      <label for="limitMinHz">Min. częstotliwość (Hz)</label
+                      ><input
+                        id="limitMinHz"
+                        type="number"
+                        min="0"
+                        max="50"
+                        step="0.5"
+                        value="35"
+                        inputmode="decimal"
+                      />
+                    </div>
+                    <button id="saveLimit" type="button" class="secondary">Zapisz limit</button>
+                  </div>
+                  <p id="limitMsg" class="small">
+                    Ustawienia są zapisywane w bazie i działają na Raspberry także przy zamkniętej aplikacji.
+                  </p>
+                </div>
+              </div>
+            </details>
+          </article>
+          <article class="card wide" id="waterSafetyCard">
+            <p class="eyebrow">Lokalne zabezpieczenie Raspberry</p>
+            <h2>Niski poziom wody</h2>
+            <p id="waterSafetyState" class="notice" role="status">Oczekiwanie na Raspberry</p>
+            <p>Aktualny poziom: <b id="waterSafetyLevel">— cm</b></p>
+            <details class="control-settings" id="waterSettings">
+              <summary>Ustaw progi i powiadomienia</summary>
+              <div class="settings-content">
+                <div class="alarm-setting-grid">
+                  <label class="alarm-setting-field"
+                    ><span>Zatrzymuj pompę przy niskim poziomie</span><input id="waterStopOn" type="checkbox"
+                  /></label>
+                  <label class="alarm-setting-field"
+                    ><span>Próg STOP (cm)</span
+                    ><input id="waterStopCm" type="number" min="1" max="245" step="1" value="25"
+                  /></label>
+                  <label class="alarm-setting-field"
+                    ><span>Ostrzegaj przed niskim poziomem</span><input id="waterWarnOn" type="checkbox"
+                  /></label>
+                  <label class="alarm-setting-field"
+                    ><span>Próg ostrzeżenia (cm)</span
+                    ><input id="waterWarnCm" type="number" min="6" max="250" step="1" value="50"
+                  /></label>
+                </div>
+                <p id="waterSafetyPercents" class="small"></p>
+                <p class="small">
+                  Poziom liczony z sondy dla zakresu 0–250 cm, nie procent objętości. Dobierz STOP powyżej minimalnego
+                  zanurzenia wlotu pompy, uwzględniając czas zatrzymania i niedokładność kalibracji. 25 i 50 cm to tylko
+                  wartości przykładowe.
+                </p>
+                <p class="small">
+                  Przy włączonym STOP: poziom ≤ próg lub brak aktualnego pomiaru przez 5 s zatrzymuje pompę. Działa
+                  także bez telefonu i internetu, po zapisaniu ustawień na Raspberry. Bez automatycznego ponownego
+                  rozruchu. Skasowanie blokady i START wymagają postoju oraz poziomu ponad STOP + 5 cm (jeśli
+                  zabezpieczenie jest włączone).
+                </p>
+                <div class="actions">
+                  <button id="saveWaterSafety" type="button">Zapisz zabezpieczenie</button
+                  ><button id="resetWaterSafety" type="button" class="secondary">Skasuj blokadę</button>
+                </div>
+                <p id="waterSafetyMessage" class="small" role="status"></p>
+              </div>
+            </details>
+          </article>
+
+          <article class="card wide" id="pressureControlCard">
+            <p class="eyebrow">Opcjonalny automat Raspberry · ciśnienie na tłoczeniu</p>
+            <h2>Utrzymywanie ciśnienia</h2>
+            <p id="pressureControlState" class="notice" role="status">Regulator wyłączony</p>
+            <div class="metrics">
+              <div class="metric"><b id="pressureControlActual">— bar</b><small>Aktualne</small></div>
+              <div class="metric"><b id="pressureControlTarget">—</b><small>Cel</small></div>
+              <div class="metric"><b id="pressureControlHz">— Hz</b><small>Zadane falownikowi</small></div>
+            </div>
+            <details class="control-settings" id="pressureSettings">
+              <summary>Ustaw automat ciśnienia</summary>
+              <div class="settings-content">
+                <label class="pressure-mode-switch"
+                  ><input id="pressureAutoOn" type="checkbox" /> Automatycznie dobieraj Hz do ciśnienia</label
+                >
+                <div class="control-grid">
+                  <label
+                    >Ciśnienie zadane (5–30 bar)<input
+                      id="pressureSetBar"
+                      type="number"
+                      min="5"
+                      max="30"
+                      step="0.1"
+                      value="25"
+                      inputmode="decimal" /></label
+                  ><label
+                    >Minimalna częstotliwość (Hz)<input
+                      id="pressureMinHz"
+                      type="number"
+                      min="35"
+                      max="49.9"
+                      step="0.1"
+                      value="35" /></label
+                  ><label
+                    >Maksymalna częstotliwość (Hz)<input
+                      id="pressureMaxHz"
+                      type="number"
+                      min="35.1"
+                      max="50"
+                      step="0.1"
+                      value="50" /></label
+                  ><label
+                    >Próg STOP (bar, maks. 32)<input
+                      id="pressureStopBar"
+                      type="number"
+                      min="7"
+                      max="32"
+                      step="0.1"
+                      value="32"
+                  /></label>
+                </div>
+                <button id="savePressureControl" type="button">Zapisz tryb ciśnienia</button>
+                <p id="pressureControlMessage" class="small" role="status"></p>
+                <details>
+                  <summary>Zasady i zabezpieczenia automatu</summary>
+                  <p class="small">
+                    Zapis nie uruchamia pompy. Nowy tryb włączaj na postoju; Start pozostaje ręczny, od minimalnych Hz.
+                    Odczyt co około 1 s, tolerancja celu ±0,3 bar, zmiana najwyżej 0,2 Hz na krok (nie częściej niż co 1
+                    s). Wymagany aktywny limit mocy do 90 kW, który ma pierwszeństwo. Brak lub błąd ciśnienia przez 3 s,
+                    przekroczenie progu STOP, błąd falownika albo brak narastania ciśnienia do 2 bar w 10 s powodują
+                    zatrzymanie i blokadę. Po blokadzie: wyłącz tryb, poczekaj na potwierdzony postój, usuń przyczynę i
+                    włącz ponownie. Bez automatycznego restartu. Wyłączenie trybu pozostawia bieżące Hz — dalsze
+                    sterowanie jest ręczne. Pierwszy rozruch wymaga próby pod nadzorem, porównania z manometrem i
+                    sprawnego niezależnego zabezpieczenia nadciśnieniowego. Raspberry i RS485 nie zastępują zabezpieczeń
+                    sprzętowych.
+                  </p>
+                </details>
+              </div>
+            </details>
           </article>
         </section>
         <section id="statsView" hidden>

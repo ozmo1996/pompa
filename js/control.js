@@ -322,6 +322,11 @@ export function renderControl(live = isLive()) {
     drive = canDrive() && !cmd.busy,
     stop = canStop();
   $("pumpState").textContent = driveStateText(s, live);
+  $("controlModeSummary").textContent = S.pressureBackend?.awaria
+    ? "Blokada automatu: " + S.pressureBackend.awaria
+    : pressureMode()
+      ? "Automat ciśnienia · cel " + fmt(S.pressureCfg?.bar, " bar") + " · ustawienia poniżej"
+      : "Tryb ręczny · częstotliwość w Hz";
   $("hz").textContent = fmt(s?.czestotliwoscWyjsciowa);
   $("current").textContent = fmt(s?.prad, " A");
   $("voltage").textContent = fmt(s?.napiecie, " V");
