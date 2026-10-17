@@ -1,6 +1,9 @@
 # Kamery — odwracalny prototyp, niezależny od pompy
 
-Status: od wersji 2.29 odtwarzacz dostępny również w głównej aplikacji, w zakładce Kamery.
+Status: WYCOFANE na prośbę użytkownika ze względu na transfer. W wersji 2.30 usunięto
+integrację kamer z głównej aplikacji. Zatrzymano osobne procesy gateway, go2rtc i tailscaled.
+Nie mają autostartu. Pliki testowe zachowano do ewentualnego odzyskania.
+Poniższy opis jest archiwalną dokumentacją prototypu i wersji 2.29.
 Samo opublikowanie strony NIE uruchamia bramki, tunelu ani kamery.
 Nie uznawać testów atrap za potwierdzenie obrazu na telefonie przez LTE.
 

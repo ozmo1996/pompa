@@ -23,8 +23,6 @@ const SHELL = [
   "icon-512.png",
   "icon-maskable-512.png",
   "js/main.js",
-  "js/cameras.js",
-  "js/cameraLogic.js",
   "js/overview.js",
   "js/logic.js",
   "js/state.js",

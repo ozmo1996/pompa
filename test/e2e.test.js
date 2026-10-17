@@ -57,101 +57,17 @@ async function open({ data, seed = {}, clockSkew = 0, sdkFails = false, clock = 
 }
 const writes = (page, p) => page.evaluate((p) => globalThis.__fb.writes.filter((w) => w.path === p), p);
 
-test("Kamery: transmisja tylko w aktywnej zakładce, Stop, tło, wylogowanie i niezależni widzowie", async () => {
-  const viewers = await Promise.all([open(), open()]);
-  for (const { page } of viewers) {
-    await page.waitForSelector("#dashboard:not([hidden])");
-    await page.evaluate(() => {
-      globalThis.__fb.user.getIdToken = async () => "test-only-token";
-      globalThis.cameraRequests = 0;
-      globalThis.cameraPending = false;
-      const realFetch = window.fetch;
-      window.fetch = (url, options) => {
-        if (!String(url).endsWith(".ts.net/stream")) return realFetch(url, options);
-        globalThis.cameraRequests++;
-        globalThis.cameraPending = true;
-        return new Promise((resolve, reject) => {
-          options.signal.addEventListener(
-            "abort",
-            () => {
-              globalThis.cameraPending = false;
-              reject(new Error("Przerwano test"));
-            },
-            { once: true },
-          );
-        });
-      };
-    });
-    assert.equal(await page.evaluate(() => globalThis.cameraRequests), 0);
-    await page.click("#camerasTab");
-    await page.waitForFunction(() => globalThis.cameraPending);
-  }
-  const [a, b] = viewers;
-  await a.page.click("#overviewTab");
-  assert.equal(await a.page.evaluate(() => globalThis.cameraPending), false);
-  assert.equal(await b.page.evaluate(() => globalThis.cameraPending), true, "Drugi widz nadal ogląda");
-  for (const action of ["stop", "background", "logout"]) {
-    await a.page.click("#camerasTab");
-    await a.page.waitForFunction(() => globalThis.cameraPending);
-    if (action === "stop") {
-      await a.page.click("#cameraStop");
-      assert.equal(await a.page.evaluate(() => globalThis.cameraPending), false);
-      await a.page.click("#cameraPlay");
-      await a.page.waitForFunction(() => globalThis.cameraPending);
-      await a.page.click("#overviewTab");
-    }
-    if (action === "background") {
-      await a.page.evaluate(() => {
-        Object.defineProperty(document, "hidden", { value: true, configurable: true });
-        document.dispatchEvent(new window.Event("visibilitychange"));
-      });
-      assert.equal(await a.page.evaluate(() => globalThis.cameraPending), false);
-      await a.page.evaluate(() => {
-        Object.defineProperty(document, "hidden", { value: false, configurable: true });
-        document.dispatchEvent(new window.Event("visibilitychange"));
-      });
-      await a.page.waitForFunction(() => globalThis.cameraPending);
-      await a.page.click("#overviewTab");
-    }
-    if (action === "logout") await a.page.click("#logout");
-    assert.equal(await a.page.evaluate(() => globalThis.cameraPending), false);
-  }
-  await b.page.click("#controlTab");
-  assert.equal(await b.page.evaluate(() => globalThis.cameraPending), false);
-  for (const { page, ctx, errors } of viewers) {
-    assert.equal((await writes(page, "pompa/polecenie")).length, 0);
-    assert.deepEqual(errors, []);
-    await ctx.close();
-  }
-});
-
-test("Kamery: wyjście podczas pobierania tokenu nie uruchamia spóźnionego żądania", async () => {
+test("Kamery wycofane: główna aplikacja nie ma zakładki ani żądań obrazu", async () => {
   const { page, ctx, errors } = await open();
+  const cameraRequests = [];
+  page.on("request", (request) => {
+    if (/\.ts\.net|\/stream(?:\?|$)/.test(request.url())) cameraRequests.push(request.url());
+  });
   await page.waitForSelector("#dashboard:not([hidden])");
-  await page.evaluate(() => {
-    globalThis.__fb.user.getIdToken = () =>
-      new Promise((resolve) => {
-        globalThis.releaseCameraToken = resolve;
-      });
-    globalThis.cameraRequests = 0;
-    const realFetch = window.fetch;
-    window.fetch = (url, options) => {
-      if (String(url).endsWith(".ts.net/stream")) {
-        globalThis.cameraRequests++;
-        return Promise.reject(new Error("Nie powinno być żądania"));
-      }
-      return realFetch(url, options);
-    };
-  });
-  await page.click("#camerasTab");
-  await page.waitForFunction(() => typeof globalThis.releaseCameraToken === "function");
-  await page.click("#notesTab");
-  await page.evaluate(async () => {
-    globalThis.releaseCameraToken("test-only-token");
-    await Promise.resolve();
-  });
-  assert.equal(await page.evaluate(() => globalThis.cameraRequests), 0);
-  assert.equal(await page.isDisabled("#cameraStop"), true);
+  assert.equal(await page.locator("#camerasTab").count(), 0);
+  assert.equal(await page.locator("video").count(), 0);
+  for (const view of ["overview", "control", "stats", "notes", "alarms"]) await page.click("#" + view + "Tab");
+  assert.deepEqual(cameraRequests, []);
   assert.deepEqual(errors, []);
   await ctx.close();
 });
