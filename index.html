@@ -11,9 +11,39 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon-192.png" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="styles.css" />
-    <link rel="modulepreload" href="js/logic.js" />
-    <script type="module" src="js/main.js"></script>
+    <link rel="stylesheet" href="styles.css?v=2.34" />
+    <!-- Jedna wersja wszystkich modułów: nowy HTML nie może uruchomić starych skryptów z cache HTTP. -->
+    <script type="importmap">
+      {
+        "imports": {
+          "./config.js": "./config.js?v=2.34",
+          "./js/main.js": "./js/main.js?v=2.34",
+          "./js/state.js": "./js/state.js?v=2.34",
+          "./js/logic.js": "./js/logic.js?v=2.34",
+          "./js/control.js": "./js/control.js?v=2.34",
+          "./js/pressureControl.js": "./js/pressureControl.js?v=2.34",
+          "./js/waterSafety.js": "./js/waterSafety.js?v=2.34",
+          "./js/overview.js": "./js/overview.js?v=2.34",
+          "./js/overviewLayout.js": "./js/overviewLayout.js?v=2.34",
+          "./js/sensors.js": "./js/sensors.js?v=2.34",
+          "./js/stats.js": "./js/stats.js?v=2.34",
+          "./js/history.js": "./js/history.js?v=2.34",
+          "./js/paramChart.js": "./js/paramChart.js?v=2.34",
+          "./js/valveTable.js": "./js/valveTable.js?v=2.34",
+          "./js/notes.js": "./js/notes.js?v=2.34",
+          "./js/heartbeat.js": "./js/heartbeat.js?v=2.34",
+          "./js/alarms.js": "./js/alarms.js?v=2.34",
+          "./js/alarmSettings.js": "./js/alarmSettings.js?v=2.34",
+          "./js/push.js": "./js/push.js?v=2.34",
+          "./raspberry/psychrometrics.js": "./raspberry/psychrometrics.js?v=2.34",
+          "./raspberry/water-safety-schema.js": "./raspberry/water-safety-schema.js?v=2.34",
+          "./raspberry/pressure-control-schema.js": "./raspberry/pressure-control-schema.js?v=2.34",
+          "./raspberry/alarm-schema.js": "./raspberry/alarm-schema.js?v=2.34"
+        }
+      }
+    </script>
+    <link rel="modulepreload" href="js/logic.js?v=2.34" />
+    <script type="module" src="js/main.js?v=2.34"></script>
   </head>
   <body>
     <main class="wrap">

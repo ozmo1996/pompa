@@ -57,6 +57,21 @@ async function open({ data, seed = {}, clockSkew = 0, sdkFails = false, clock = 
 }
 const writes = (page, p) => page.evaluate((p) => globalThis.__fb.writes.filter((w) => w.path === p), p);
 
+test("Aktualizacja: HTML i wszystkie lokalne moduły korzystają z jednej wersji cache", async () => {
+  const { page, ctx, errors } = await open();
+  const requests = [];
+  page.on("request", (r) => {
+    if (r.url().startsWith(base) && new URL(r.url()).pathname.endsWith(".js")) requests.push(r.url());
+  });
+  await page.reload();
+  await page.waitForSelector("#dashboard:not([hidden])");
+  const version = (await page.textContent("#appVersion")).split(" · v").at(-1);
+  assert.ok(requests.length > 10);
+  for (const url of requests) assert.equal(new URL(url).searchParams.get("v"), version, url);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
 test("Układ podglądu: kolejność, zapis, reset i odporność na obcy zapis bez poleceń pompy", async () => {
   const { page, ctx, errors } = await open();
   await page.waitForSelector("#dashboard:not([hidden])");
