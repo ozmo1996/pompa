@@ -42,7 +42,7 @@ async function tokenKey(token) {
 }
 
 /** Service worker (powiadomienia w tle + praca bez sieci). Rejestracja jest idempotentna. */
-export const registerSW = () => navigator.serviceWorker.register(SW_FILE);
+export const registerSW = () => navigator.serviceWorker.register(SW_FILE, { updateViaCache: "none" });
 
 export async function initMessaging(app) {
   try {

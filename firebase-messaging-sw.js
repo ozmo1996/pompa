@@ -75,7 +75,8 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     (async () => {
       try {
-        const res = await fetch(req);
+        // Sprawdź aktualną wersję na serwerze, zamiast mieszać stary HTML z nowymi modułami z cache HTTP.
+        const res = await fetch(req, { cache: "no-cache" });
         if (res.ok && res.type === "basic") {
           const copy = res.clone();
           caches
