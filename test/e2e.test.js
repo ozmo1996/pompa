@@ -587,9 +587,11 @@ test("Osobny start ciśnienia: 0 Hz, anulowanie, zmiana ustawień w dialogu i ut
   });
   await page.click("#dlgOk");
   assert.equal((await writes(page, "pompa/polecenie")).length, 0);
+  await page.waitForFunction(() => document.getElementById("commandMessage").textContent.includes("zmienił"));
   assert.match(await page.textContent("#commandMessage"), /zmienił/);
   await page.click("#startPressurePump");
   await page.click("#dlgOk");
+  await page.waitForFunction(() => globalThis.__fb.writes.some((w) => w.path === "pompa/polecenie"));
   const command = (await writes(page, "pompa/polecenie")).at(-1).value;
   assert.equal(command.akcja, "start");
   assert.equal(command.czestotliwosc, 0);
