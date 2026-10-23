@@ -64,6 +64,7 @@ test("Runtime: hamowanie operatora nie jest awarią i nie zwiększa Hz", async (
   assert.equal(x.r.engine.fault, "");
   await x.r.control({ ...drive(), pracuje: false, czestotliwoscWyjsciowa: 0 }, x.state, x.limit);
   assert.equal(x.r.operatorStopping, false);
+  assert.throws(() => x.r.prepareCommand({ akcja: "start", czas: 1 }, x.state, x.limit), /starsze od ostatniego STOP/);
 });
 test("Runtime: nie wysyła poleceń przy wyłączonym trybie", async (t) => {
   const x = setup(t);

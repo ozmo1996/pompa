@@ -120,7 +120,17 @@ class PressureRuntime {
     this.publish();
   }
   prepareCommand(p, s, limit) {
+    if (
+      (p?.akcja === "start" || p?.akcja === "czestotliwosc") &&
+      Number.isFinite(p.czas) &&
+      p.czas <= (this.lastOperatorStopTime || 0)
+    )
+      throw new Error("Polecenie starsze od ostatniego STOP — odrzucone");
     if (p?.akcja === "stop") {
+      this.lastOperatorStopTime = Math.max(
+        this.lastOperatorStopTime || 0,
+        Number.isFinite(p.czas) ? p.czas : Date.now(),
+      );
       this.operatorStopping = true;
       this.water.startingUntil = 0;
       this.engine.stopped();
