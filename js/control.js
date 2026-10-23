@@ -234,9 +234,12 @@ function askConfirm({ title, lead, items, ok, hot }) {
 
 const message = (t) => ($("commandMessage").textContent = t);
 
-async function sendCommand(action, stopMode = "lagodny") {
+async function sendCommand(action, stopMode = "lagodny", automaticStart = false) {
   const stop = action === "stop";
   if (stop ? !canStop() : cmd.busy || !canDrive()) return;
+  const startingConfigId = S.pressureCfg?.id;
+  if (action === "start" && automaticStart !== pressureMode())
+    return message("Tryb sterowania zmienił się — wybierz właściwy przycisk startu.");
   if (!stop && action === "czestotliwosc" && pressureMode())
     return message("Automat ciśnienia jest włączony — ręczna zmiana Hz zablokowana.");
   if (action === "start" && !pressureCanStart())
@@ -260,7 +263,11 @@ async function sendCommand(action, stopMode = "lagodny") {
       a = analyzeChange({ status: S.status, live: isLive(), hz, limitCfg: S.limitCfg });
     if (starting || a.items.length) {
       const ok = await askConfirm({
-        title: starting ? "Uruchomić pompę?" : "Potwierdź zmianę częstotliwości",
+        title: starting
+          ? automaticStart
+            ? "Uruchomić regulację ciśnienia?"
+            : "Uruchomić pompę?"
+          : "Potwierdź zmianę częstotliwości",
         lead:
           starting && pressureMode()
             ? `Pompa ruszy od ${f1(hz)} Hz. Automat będzie utrzymywał ${S.pressureCfg.bar} bar w zakresie ${S.pressureCfg.minHz}–${S.pressureCfg.maxHz} Hz, z progiem STOP ${S.pressureCfg.maxBar} bar. Pierwszy rozruch wymaga nadzoru i manometru.`
@@ -273,7 +280,15 @@ async function sendCommand(action, stopMode = "lagodny") {
       });
       if (!ok) return message("Anulowano — polecenie nie zostało wysłane.");
       // Okno mogło być otwarte długo — sprawdź stan ponownie przed wysłaniem.
-      if (cmd.busy || !canDrive() || (action === "start" && (!pressureCanStart() || !waterCanStart()))) {
+      if (
+        cmd.busy ||
+        !canDrive() ||
+        (action === "start" &&
+          (!pressureCanStart() ||
+            !waterCanStart() ||
+            automaticStart !== pressureMode() ||
+            (automaticStart && startingConfigId !== S.pressureCfg?.id)))
+      ) {
         message("Stan pompy lub połączenia zmienił się — polecenie nie zostało wysłane.");
         return renderControl();
       }
@@ -350,7 +365,8 @@ export function renderControl(live = isLive()) {
   const inputs = u && live && s?.polaczony === true && !cmd.busy;
   $("controlHz").disabled = !inputs || pressureMode();
   $("controlHzSlider").disabled = !inputs || pressureMode();
-  $("startPump").disabled = !drive || !pressureCanStart() || !waterCanStart();
+  $("startPump").disabled = !drive || pressureMode() || !pressureCanStart() || !waterCanStart();
+  $("startPressurePump").disabled = !drive || !pressureMode() || !pressureCanStart() || !waterCanStart();
   $("setFrequency").disabled = !drive || pressureMode();
   $("stopPump").disabled = !stop;
   $("gentleStopPump").disabled = !stop;
@@ -377,6 +393,7 @@ export function initControl() {
   });
   $("controlHz").addEventListener("change", (e) => syncFrequency(parseDecimal(e.target.value)));
   $("startPump").addEventListener("click", () => sendCommand("start"));
+  $("startPressurePump").addEventListener("click", () => sendCommand("start", "lagodny", true));
   $("setFrequency").addEventListener("click", () => sendCommand("czestotliwosc"));
   $("stopPump").addEventListener("click", () => sendCommand("stop", "natychmiastowy"));
   $("gentleStopPump").addEventListener("click", () => sendCommand("stop", "lagodny"));

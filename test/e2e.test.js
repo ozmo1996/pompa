@@ -57,6 +57,48 @@ async function open({ data, seed = {}, clockSkew = 0, sdkFails = false, clock = 
 }
 const writes = (page, p) => page.evaluate((p) => globalThis.__fb.writes.filter((w) => w.path === p), p);
 
+test("Układ podglądu: kolejność, zapis, reset i odporność na obcy zapis bez poleceń pompy", async () => {
+  const { page, ctx, errors } = await open();
+  await page.waitForSelector("#dashboard:not([hidden])");
+  const order = (selector) =>
+    page.locator(selector + " > article").evaluateAll((nodes) => nodes.map((n) => n.dataset.overviewTile));
+  const initial = await order(".overview-summary");
+  const details = await order(".sensor-grid");
+  assert.equal(initial.length, 6);
+  assert.equal(details.length, 6);
+  await page.click("#editOverviewLayout");
+  for (const width of [320, 390, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `width ${width}`);
+  }
+  await page.getByRole("button", { name: "Przesuń wcześniej: Ciśnienie tłoczenia", exact: true }).click();
+  await page.getByRole("button", { name: "Przesuń wcześniej: Zbiornik", exact: true }).click();
+  assert.deepEqual(await order(".overview-summary"), [initial[1], initial[0], ...initial.slice(2)]);
+  assert.deepEqual(await order(".sensor-grid"), [details[0], details[2], details[1], ...details.slice(3)]);
+  await page.reload();
+  await page.waitForSelector("#dashboard:not([hidden])");
+  assert.equal((await order(".overview-summary"))[0], initial[1]);
+  assert.equal((await order(".sensor-grid"))[1], details[2]);
+  await page.click("#editOverviewLayout");
+  await page.click("#resetOverviewLayout");
+  assert.deepEqual(await order(".overview-summary"), initial);
+  assert.deepEqual(await order(".sensor-grid"), details);
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "pompa.overview.layout.v1",
+      JSON.stringify({ summary: ["unknown", "summaryWater", "summaryWater"], details: null }),
+    ),
+  );
+  await page.reload();
+  await page.waitForSelector("#dashboard:not([hidden])");
+  assert.equal((await order(".overview-summary"))[0], "summaryWater");
+  assert.equal(new Set(await order(".overview-summary")).size, 6);
+  assert.deepEqual(await order(".sensor-grid"), details);
+  assert.equal((await writes(page, "pompa/polecenie")).length, 0);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
 test("Dwa zatrzymania: oba dostępne bez falownika, wysyłają odrębne tryby bez Hz", async () => {
   const { page, ctx } = await open({ data: seedData(Date.now(), { fresh: false }) });
   await page.waitForSelector("#dashboard:not([hidden])");
@@ -478,10 +520,13 @@ test("Regulator ciśnienia: opcjonalny, zapis nie uruchamia pompy, blokada Hz i 
     globalThis.__fb.set("pompa/status/cisnienieTloczenia/aktualizacja", Date.now());
     globalThis.__fb.set("pompa/status/aktualizacja", Date.now());
   });
-  await page.waitForFunction(() => !document.getElementById("startPump").disabled);
+  await page.waitForFunction(() => !document.getElementById("startPressurePump").disabled);
+  assert.equal(await page.isEnabled("#startPump"), false);
   if (process.env.POMPA_CONTROL_CAPTURE)
     await page.locator("#pressureControlCard").screenshot({ path: process.env.POMPA_CONTROL_CAPTURE });
-  await page.click("#startPump");
+  await page.click("#startPressurePump");
+  assert.match(await page.textContent("#dlgTitle"), /regulację ciśnienia/);
+  assert.match(await page.textContent("#dlgLead"), /25 bar/);
   await page.click("#dlgOk");
   await page.waitForFunction(() => globalThis.__fb.writes.some((w) => w.path === "pompa/polecenie"));
   const command = (await writes(page, "pompa/polecenie")).at(-1).value;
@@ -491,11 +536,65 @@ test("Regulator ciśnienia: opcjonalny, zapis nie uruchamia pompy, blokada Hz i 
     globalThis.__fb.set("pompa/polecenie", { ...c, wykonane: true });
     globalThis.__fb.set("pompa/status/cisnienieTloczenia/aktualizacja", Date.now() - 4000);
   });
-  await page.waitForFunction(() => document.getElementById("startPump").disabled);
+  await page.waitForFunction(() => document.getElementById("startPressurePump").disabled);
   assert.equal(await page.isEnabled("#stopPump"), true);
   await page.evaluate(() => globalThis.__fb.set("pompa/statusRegulatoraCisnienia/awaria", "Utrata czujnika"));
   assert.equal(await page.isEnabled("#startPump"), false);
+  assert.equal(await page.isEnabled("#startPressurePump"), false);
   assert.equal(await page.isEnabled("#stopPump"), true);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("Osobny start ciśnienia: 0 Hz, anulowanie, zmiana ustawień w dialogu i utrata łączności", async () => {
+  const t = Date.now(),
+    data = seedData(t);
+  data.pompa.status.pracuje = false;
+  data.pompa.status.cisnienieTloczenia = { bar: 0, napiecieV: 0.5, polaczony: true, aktualizacja: t };
+  data.pompa.ustawienia.limitMocy.minHz = 0;
+  data.pompa.ustawienia.regulatorCisnienia = {
+    wersja: 1,
+    id: "auto-zero",
+    wlaczony: true,
+    bar: 25,
+    minHz: 0,
+    maxHz: 50,
+    maxBar: 32,
+    zmieniono: t,
+    zmienil: "test",
+  };
+  data.pompa.statusRegulatoraCisnienia = {
+    wersja: 1,
+    ustawieniaId: "auto-zero",
+    wlaczony: true,
+    aktualizacja: t,
+    stan: "gotowy",
+    awaria: "",
+  };
+  const { page, ctx, errors } = await open({ data, clock: true });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#controlTab");
+  assert.equal(await page.isEnabled("#startPump"), false);
+  await page.click("#startPressurePump");
+  assert.match(await page.textContent("#dlgLead"), /0,0 Hz/);
+  await page.click("#dlgCancel");
+  assert.equal((await writes(page, "pompa/polecenie")).length, 0);
+  await page.click("#startPressurePump");
+  await page.evaluate(() => {
+    const cfg = globalThis.__fb.read("pompa/ustawienia/regulatorCisnienia");
+    globalThis.__fb.set("pompa/ustawienia/regulatorCisnienia", { ...cfg, id: "changed", bar: 20 });
+    globalThis.__fb.set("pompa/statusRegulatoraCisnienia/ustawieniaId", "changed");
+  });
+  await page.click("#dlgOk");
+  assert.equal((await writes(page, "pompa/polecenie")).length, 0);
+  assert.match(await page.textContent("#commandMessage"), /zmienił/);
+  await page.click("#startPressurePump");
+  await page.click("#dlgOk");
+  const command = (await writes(page, "pompa/polecenie")).at(-1).value;
+  assert.equal(command.akcja, "start");
+  assert.equal(command.czestotliwosc, 0);
+  await page.evaluate(() => globalThis.__fb.setConnected(false));
+  assert.equal(await page.isEnabled("#startPressurePump"), false);
   assert.deepEqual(errors, []);
   await ctx.close();
 });

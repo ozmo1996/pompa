@@ -2459,9 +2459,47 @@ body:has(#controlView:not([hidden])) .hero p.small {
 }
 .overview-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 24px;
+}
+.layout-editor {
+  margin-bottom: 24px;
+}
+#overviewLayoutLists {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 24px;
+  margin: 20px 0;
+}
+#overviewLayoutLists section {
+  min-width: 0;
+}
+.layout-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+.layout-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px 48px;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  padding: 8px 0;
+}
+.layout-list span {
+  overflow-wrap: anywhere;
+}
+.layout-list button {
+  min-height: 48px;
+  padding: 8px;
+  font-size: 22px;
+}
+#startPressurePump {
+  margin-top: 16px;
+  max-width: 100%;
+  white-space: normal;
 }
 .summary-tile {
   margin: 0;

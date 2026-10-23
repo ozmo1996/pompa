@@ -20,6 +20,8 @@ export function pressureCanStart() {
   return (
     !pressureMode() ||
     (!!S.pressureCfg &&
+      S.pressureCfg.wlaczony === true &&
+      S.pressureBackend?.wlaczony === true &&
       pressureBackendReady() &&
       !S.pressureBackend.awaria &&
       S.status?.pracuje !== true &&

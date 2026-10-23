@@ -24,6 +24,7 @@ const SHELL = [
   "icon-maskable-512.png",
   "js/main.js",
   "js/overview.js",
+  "js/overviewLayout.js",
   "js/logic.js",
   "js/state.js",
   "js/sensors.js",
