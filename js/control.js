@@ -23,7 +23,7 @@ import { waterCanStart, renderWaterSafety } from "./waterSafety.js";
 const { silnik: M, progi: P } = CFG;
 
 // ---------- stan sterowania ----------
-const cmd = { busy: false, id: null, timer: null };
+const cmd = { busy: false, confirming: false, id: null, timer: null };
 let controlDirty = false, // użytkownik zmienia częstotliwość — nie nadpisuj jej statusem
   limitDirty = false, // niezapisane zmiany limitu
   resyncAfterAuto = false;
@@ -38,7 +38,7 @@ const canStop = () => !!user() && !S.denied && S.connected;
 
 export function resetControl() {
   clearTimeout(cmd.timer);
-  Object.assign(cmd, { busy: false, id: null, timer: null });
+  Object.assign(cmd, { busy: false, confirming: false, id: null, timer: null });
   controlDirty = false;
   limitDirty = false;
   resyncAfterAuto = false;
@@ -238,7 +238,8 @@ const message = (t) => ($("commandMessage").textContent = t);
 
 async function sendCommand(action, stopMode = "lagodny", automaticStart = false) {
   const stop = action === "stop";
-  if (stop ? !canStop() : cmd.busy || !canDrive()) return;
+  if (stop ? !canStop() : cmd.busy || cmd.confirming || !canDrive()) return;
+  if (stop && $("confirmDlg").open) $("confirmDlg").close("cancel");
   if (!stop && !pressureMode() && !manualModeReady())
     return message("Poczekaj na potwierdzenie trybu ręcznego przez Raspberry.");
   const startingConfigId = S.pressureCfg?.id;
@@ -266,23 +267,34 @@ async function sendCommand(action, stopMode = "lagodny", automaticStart = false)
     const starting = action === "start" && S.status?.pracuje !== true,
       a = analyzeChange({ status: S.status, live: isLive(), hz, limitCfg: S.limitCfg });
     if (starting || a.items.length) {
-      const ok = await askConfirm({
-        title: starting
-          ? automaticStart
-            ? "Uruchomić regulację ciśnienia?"
-            : "Uruchomić pompę?"
-          : "Potwierdź zmianę częstotliwości",
-        lead:
-          starting && pressureMode()
-            ? `Pompa ruszy od ${f1(hz)} Hz. Automat będzie utrzymywał ${S.pressureCfg.bar} bar w zakresie ${S.pressureCfg.minHz}–${S.pressureCfg.maxHz} Hz, z progiem STOP ${S.pressureCfg.maxBar} bar. Pierwszy rozruch wymaga nadzoru i manometru.`
-            : starting
-              ? `Pompa ruszy i rozpędzi się do ${f1(hz)} Hz.`
-              : `Nowa częstotliwość zadana: ${f1(hz)} Hz.`,
-        items: a.items,
-        ok: starting ? "Uruchom" : a.hot ? "Tak, zmień" : "Zmień",
-        hot: a.hot,
-      });
-      if (!ok) return message("Anulowano — polecenie nie zostało wysłane.");
+      cmd.confirming = true;
+      renderControl();
+      let ok;
+      try {
+        ok = await askConfirm({
+          title: starting
+            ? automaticStart
+              ? "Uruchomić regulację ciśnienia?"
+              : "Uruchomić pompę?"
+            : "Potwierdź zmianę częstotliwości",
+          lead:
+            starting && pressureMode()
+              ? `Pompa ruszy od ${f1(hz)} Hz. Automat będzie utrzymywał ${S.pressureCfg.bar} bar w zakresie ${S.pressureCfg.minHz}–${S.pressureCfg.maxHz} Hz, z progiem STOP ${S.pressureCfg.maxBar} bar. Pierwszy rozruch wymaga nadzoru i manometru.`
+              : starting
+                ? `Pompa ruszy i rozpędzi się do ${f1(hz)} Hz.`
+                : `Nowa częstotliwość zadana: ${f1(hz)} Hz.`,
+          items: a.items,
+          ok: starting ? "Uruchom" : a.hot ? "Tak, zmień" : "Zmień",
+          hot: a.hot,
+        });
+      } finally {
+        cmd.confirming = false;
+        renderControl();
+      }
+      if (!ok) {
+        if (!cmd.busy) message("Anulowano — polecenie nie zostało wysłane.");
+        return;
+      }
       // Okno mogło być otwarte długo — sprawdź stan ponownie przed wysłaniem.
       if (
         cmd.busy ||
@@ -348,7 +360,7 @@ export function onCommandUpdate(command) {
 export function renderControl(live = isLive()) {
   const s = S.status,
     u = !!user(),
-    drive = canDrive() && !cmd.busy,
+    drive = canDrive() && !cmd.busy && !cmd.confirming,
     stop = canStop();
   if (pressureMode()) resyncAfterAuto = true;
   if (resyncAfterAuto && manualModeReady() && live && isNum(s?.czestotliwoscZadana)) {
@@ -374,7 +386,7 @@ export function renderControl(live = isLive()) {
       : live && s.polaczony
         ? "Brak zgłoszonej awarii"
         : "Oczekiwanie na potwierdzenie stanu";
-  const inputs = u && live && s?.polaczony === true && !cmd.busy;
+  const inputs = u && live && s?.polaczony === true && !cmd.busy && !cmd.confirming;
   $("controlHz").disabled = !inputs || !manualModeReady();
   $("controlHzSlider").disabled = !inputs || !manualModeReady();
   $("startPump").disabled = !drive || !manualModeReady() || !pressureCanStart() || !waterCanStart();
