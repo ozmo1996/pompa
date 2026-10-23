@@ -226,7 +226,7 @@ function renderWater() {
       isNum(s.poziomWodyProc) &&
       s.poziomWodyProc >= 0 &&
       s.poziomWodyProc <= 100,
-    tempFresh = isLive() && s?.temperaturaWodyPolaczona === true,
+    tempFresh = isLive() && s?.temperaturaWodyPolaczona === true && isFresh(s.aktualizacjaTemperatury, now(), 15000),
     water = waterFresh ? s.poziomWodyProc : null,
     pct = isNum(water) ? clamp(water, 0, 100) : 0;
   $("water").textContent = fmt(water);

@@ -55,4 +55,15 @@ export function renderOverview() {
     : power.est
       ? "Wartość szacowana"
       : "Odczyt falownika";
+  const temp =
+    live &&
+    s?.temperaturaWodyPolaczona === true &&
+    isNum(s.temperaturaWody) &&
+    isFresh(s.aktualizacjaTemperatury, t, 15000);
+  $("summaryWaterTemp").textContent = fmt(temp ? s.temperaturaWody : null, " °C");
+  $("summaryWaterTempState").textContent = temp ? "Aktualny pomiar DS18B20" : "Brak świeżego pomiaru DS18B20";
+  $("summaryPressureMode").textContent = S.pressureCfg?.wlaczony ? "Automat" : "Tryb ręczny";
+  $("summaryPressureTarget").textContent = S.pressureCfg?.wlaczony
+    ? "Cel " + fmt(S.pressureCfg.bar, " bar") + " · " + S.pressureCfg.minHz + "–" + S.pressureCfg.maxHz + " Hz"
+    : "Częstotliwość ustawiana przez operatora";
 }

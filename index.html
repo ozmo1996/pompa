@@ -159,6 +159,16 @@
             </article>
           </div>
           <h3 class="detail-heading">Szczegóły pomiarów</h3>
+          <div class="overview-secondary" aria-label="Temperatura i pogoda">
+            <article class="card summary-tile" data-param="tWody">
+              <small>Temperatura wody</small><b id="summaryWaterTemp">— °C</b
+              ><span id="summaryWaterTempState">Brak pomiaru</span>
+            </article>
+            <article class="card summary-tile">
+              <small>Regulacja ciśnienia</small><b id="summaryPressureMode">Tryb ręczny</b
+              ><span id="summaryPressureTarget">—</span>
+            </article>
+          </div>
           <div class="grid sensor-grid">
             <article class="card">
               <p class="eyebrow">Falownik</p>
@@ -392,7 +402,14 @@
             <p id="controlModeSummary" class="small control-mode-summary" role="status">
               Tryb ręczny · częstotliwość w Hz
             </p>
-            <div class="primary-stop-row"><button id="stopPump" type="button" class="danger">Stop</button></div>
+            <div class="primary-stop-row">
+              <button id="gentleStopPump" type="button">Zatrzymaj</button
+              ><button id="stopPump" type="button" class="danger">STOP</button>
+            </div>
+            <p class="small">
+              Zatrzymaj: łagodne hamowanie rampą falownika. STOP: żądanie odcięcia wyjścia MRS — silnik wybiega.
+              Połączenie przez internet nie zastępuje sprzętowego E-STOP.
+            </p>
             <div class="control-grid">
               <div>
                 <label for="controlHz">Nastawa ręczna (Hz)</label>
@@ -593,15 +610,15 @@
                     >Minimalna częstotliwość (Hz)<input
                       id="pressureMinHz"
                       type="number"
-                      min="35"
+                      min="0"
                       max="49.9"
                       step="0.1"
-                      value="35" /></label
+                      value="0" /></label
                   ><label
                     >Maksymalna częstotliwość (Hz)<input
                       id="pressureMaxHz"
                       type="number"
-                      min="35.1"
+                      min="0.1"
                       max="50"
                       step="0.1"
                       value="50" /></label

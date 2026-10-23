@@ -4,7 +4,7 @@
     id: "domyslne",
     wlaczony: false,
     bar: 25,
-    minHz: 35,
+    minHz: 0,
     maxHz: 50,
     maxBar: 32,
     zmieniono: 0,
@@ -23,7 +23,7 @@
     for (const k of ["bar", "minHz", "maxHz", "maxBar", "zmieniono"])
       if (typeof c[k] !== "number" || !Number.isFinite(c[k])) return "Nieprawidłowa liczba: " + k;
     if (c.bar < 5 || c.bar > 30) return "Ciśnienie zadane: 5–30 bar";
-    if (c.minHz < 35 || c.maxHz > 50 || c.minHz >= c.maxHz) return "Zakres: 35 ≤ min Hz < max Hz ≤ 50";
+    if (c.minHz < 0 || c.maxHz > 50 || c.minHz >= c.maxHz) return "Zakres: 0 ≤ min Hz < max Hz ≤ 50";
     if (c.maxBar < c.bar + 2 || c.maxBar > 32) return "Próg STOP: co najmniej 2 bar ponad celem, maksymalnie 32 bar";
     if (c.zmieniono < 0 || typeof c.zmienil !== "string" || c.zmienil.length > 200) return "Nieprawidłowe dane zapisu";
     const keys = Object.keys(defaults());

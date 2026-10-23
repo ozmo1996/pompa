@@ -121,11 +121,13 @@ class PressureRuntime {
   }
   prepareCommand(p, s, limit) {
     if (p?.akcja === "stop") {
+      this.operatorStopping = true;
       this.water.startingUntil = 0;
       this.engine.stopped();
       return p;
     }
     if (p?.akcja === "start") {
+      if (this.operatorStopping) throw new Error("Trwa zatrzymywanie — poczekaj na potwierdzenie postoju");
       const waterError = this.water.validateStart(s);
       if (waterError) throw new Error(waterError);
       const error = this.engine.validateStart(s, limit.cfg, Date.now());
@@ -134,6 +136,7 @@ class PressureRuntime {
     }
     if (p?.akcja === "czestotliwosc" && (this.engine.cfg.wlaczony || this.engine.fault))
       throw new Error("Ręczne Hz zablokowane — wyłącz regulator i usuń blokadę");
+    if (p?.akcja === "czestotliwosc" && this.operatorStopping) throw new Error("Trwa zatrzymywanie");
     if (p?.akcja === "czestotliwosc" && this.water.fault) throw new Error("Blokada zabezpieczenia wody");
     return p;
   }
@@ -155,6 +158,14 @@ class PressureRuntime {
   }
   async control(d, s, limit) {
     this.lastState = d;
+    if (this.operatorStopping) {
+      this.engine.state = "zatrzymywanie";
+      if (d.pracuje === false && Number.isFinite(d.czestotliwoscWyjsciowa) && d.czestotliwoscWyjsciowa <= 0.7) {
+        this.operatorStopping = false;
+        this.engine.state = "pompa zatrzymana";
+      }
+      return { hz: null };
+    }
     if (this.water.check({ ...s, ...d })) {
       if (this.water.stopNeeded) await this.stopWater();
       return { hz: null };
@@ -175,7 +186,11 @@ class PressureRuntime {
       return { hz: null };
     }
     if (!enabled) return limit.krok({ moc: d.moc, pracuje: d.pracuje });
-    if (!d.pracuje) return { hz: null };
+    if (!d.pracuje && !e.armed) return { hz: null };
+    // Poniżej progu RUN limit mocy zeruje hzEff. Nie wolno przez to blokować rozruchu od 0 Hz.
+    if (!d.pracuje && e.armed && d.czestotliwoscWyjsciowa < 5) {
+      return { hz: Number.isFinite(plan.hz) && Math.abs(plan.hz - d.czestotliwoscZadana) >= 0.09 ? plan.hz : null };
+    }
     // Limit mocy ma pierwszeństwo. Bez resetowania jego pamięci i bez drugiego zapisu Hz.
     const target = Number.isFinite(plan.hz) ? plan.hz : d.czestotliwoscZadana;
     limit.hzCel = target;

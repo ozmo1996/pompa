@@ -136,9 +136,9 @@ async function save() {
         "Wymagany poprawny odczyt ciśnienia młodszy niż 3 s i poniżej progu STOP.";
       return;
     }
-    if (l?.wlaczony !== true || l.kw < 10 || l.kw > 90 || l.minHz < 35 || l.minHz > c.minHz) {
+    if (l?.wlaczony !== true || l.kw < 10 || l.kw > 90 || l.minHz < 0 || l.minHz > c.minHz) {
       $("pressureControlMessage").textContent =
-        "Włącz limit mocy 10–90 kW; minimum Hz limitu musi wynosić 35…min Hz regulatora.";
+        "Włącz limit mocy 10–90 kW; minimum Hz limitu musi wynosić 0…min Hz regulatora.";
       return;
     }
     if (

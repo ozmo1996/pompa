@@ -41,6 +41,8 @@ async function deploy() {
   fs.writeFileSync(backup, JSON.stringify(current, null, 2), { mode: 0o600 });
   const proposed = structuredClone(current);
   proposed.rules.pompa.ustawienia.regulatorCisnienia = buildPressureControlRules();
+  if (!proposed.rules.pompa.polecenie) throw new Error("Brak reguł poleceń");
+  proposed.rules.pompa.polecenie.trybStop = { ".validate": "newData.isString() && (newData.val() === 'lagodny' || newData.val() === 'natychmiastowy') && newData.parent().child('akcja').val() === 'stop'" };
   const etag = response.headers.get("etag");
   if (etag) headers["if-match"] = etag;
   else {
@@ -72,6 +74,11 @@ async function deploy() {
         },
     );
   const result = (await ref.get()).val();
+  if (process.argv.includes('--minimum-zero')) {
+    fs.writeFileSync(path.join(__dirname, 'settings-before-drive-' + Date.now() + '.json'), JSON.stringify({pressure:result,limit:(await admin.database().ref('pompa/ustawienia/limitMocy').get()).val()}), {mode:0o600});
+    await ref.transaction(v => v ? {...v,minHz:0,id:'drive-' + Date.now(),zmieniono:Date.now(),zmienil:'aktualizacja zakresu 0–50 Hz'} : v);
+    await admin.database().ref('pompa/ustawienia/limitMocy').transaction(v => v ? {...v,minHz:0} : v);
+  }
   console.log("PRESSURE_RULES_OK backup=" + backup, "wlaczony=" + result.wlaczony);
   await admin.app().delete();
 }

@@ -24,7 +24,7 @@ function setup(t, { offline = false, failStop = 0 } = {}) {
   };
   const state = { cisnienieTloczenia: { polaczony: true, bar: 20, napiecieV: 2.5, aktualizacja: Date.now() } };
   const limit = {
-    cfg: { wlaczony: true, kw: 85, minHz: 35 },
+    cfg: { wlaczony: true, kw: 85, minHz: 0 },
     hzEff: 40,
     hzCel: 40,
     ustawCel(hz) {
@@ -55,6 +55,16 @@ function setup(t, { offline = false, failStop = 0 } = {}) {
   return { r, dir, db, options, state, limit, stops: () => stops, configure: (c) => listener({ val: () => c }) };
 }
 const drive = () => ({ pracuje: true, awaria: false, moc: 60, czestotliwoscZadana: 40, czestotliwoscWyjsciowa: 40 });
+test("Runtime: hamowanie operatora nie jest awarią i nie zwiększa Hz", async (t) => {
+  const x = setup(t);
+  x.configure({ ...A.defaults(), wlaczony: true });
+  x.r.prepareCommand({ akcja: "stop" }, x.state, x.limit);
+  assert.throws(() => x.r.prepareCommand({ akcja: "start" }, x.state, x.limit), /zatrzymywanie/);
+  assert.equal((await x.r.control(drive(), x.state, x.limit)).hz, null);
+  assert.equal(x.r.engine.fault, "");
+  await x.r.control({ ...drive(), pracuje: false, czestotliwoscWyjsciowa: 0 }, x.state, x.limit);
+  assert.equal(x.r.operatorStopping, false);
+});
 test("Runtime: nie wysyła poleceń przy wyłączonym trybie", async (t) => {
   const x = setup(t);
   x.configure(A.defaults());
@@ -66,7 +76,8 @@ test("Runtime: start automatu od minimum, ręczne Hz odrzucone, Stop zawsze dost
   const x = setup(t);
   x.configure({ ...A.defaults(), wlaczony: true });
   const state = { ...x.state, polaczony: true, aktualizacja: Date.now(), awaria: false };
-  assert.equal(x.r.prepareCommand({ akcja: "start", czestotliwosc: 50 }, state, x.limit).czestotliwosc, 35);
+  x.limit.cfg.minHz = 0;
+  assert.equal(x.r.prepareCommand({ akcja: "start", czestotliwosc: 50 }, state, x.limit).czestotliwosc, 0);
   assert.throws(() => x.r.prepareCommand({ akcja: "czestotliwosc" }, state, x.limit));
   assert.equal(x.r.prepareCommand({ akcja: "stop" }, {}, x.limit).akcja, "stop");
 });

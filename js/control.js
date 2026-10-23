@@ -234,7 +234,7 @@ function askConfirm({ title, lead, items, ok, hot }) {
 
 const message = (t) => ($("commandMessage").textContent = t);
 
-async function sendCommand(action) {
+async function sendCommand(action, stopMode = "lagodny") {
   const stop = action === "stop";
   if (stop ? !canStop() : cmd.busy || !canDrive()) return;
   if (!stop && action === "czestotliwosc" && pressureMode())
@@ -251,7 +251,7 @@ async function sendCommand(action) {
       $("controlHz").focus();
       return;
     }
-    if (action === "start" && hz <= 0) {
+    if (action === "start" && hz <= 0 && !pressureMode()) {
       message("Podaj częstotliwość większą od 0 Hz, aby uruchomić pompę.");
       $("controlHz").focus();
       return;
@@ -285,6 +285,7 @@ async function sendCommand(action) {
     // wazneDo: Raspberry może odrzucić polecenie, które dotarło z opóźnieniem (np. po odzyskaniu zasięgu).
     command = { id, akcja: action, czas: t, wazneDo: t + P.potwierdzeniePoleceniaMs };
   if (hz !== null) command.czestotliwosc = hz;
+  if (stop) command.trybStop = stopMode;
   Object.assign(cmd, { busy: true, id });
   message(stop ? "Wysyłanie polecenia zatrzymania…" : "Wysyłanie polecenia do falownika…");
   renderControl();
@@ -352,6 +353,7 @@ export function renderControl(live = isLive()) {
   $("startPump").disabled = !drive || !pressureCanStart() || !waterCanStart();
   $("setFrequency").disabled = !drive || pressureMode();
   $("stopPump").disabled = !stop;
+  $("gentleStopPump").disabled = !stop;
   $("stopNote").hidden = !stop || live;
   $("stopNote").textContent =
     "Brak świeżych danych z Raspberry — Stop i tak zostanie wysłany. Sprawdź potem stan pompy.";
@@ -376,7 +378,8 @@ export function initControl() {
   $("controlHz").addEventListener("change", (e) => syncFrequency(parseDecimal(e.target.value)));
   $("startPump").addEventListener("click", () => sendCommand("start"));
   $("setFrequency").addEventListener("click", () => sendCommand("czestotliwosc"));
-  $("stopPump").addEventListener("click", () => sendCommand("stop"));
+  $("stopPump").addEventListener("click", () => sendCommand("stop", "natychmiastowy"));
+  $("gentleStopPump").addEventListener("click", () => sendCommand("stop", "lagodny"));
   for (const id of ["limitOn", "limitKw", "limitMinHz"])
     $(id).addEventListener("input", () => {
       limitDirty = true;

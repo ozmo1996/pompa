@@ -2632,3 +2632,57 @@ body:has(#controlView:not([hidden])) .hero p.small {
     font-size: 1.15rem;
   }
 }
+/* v2.31: gęstszy, responsywny podgląd bez ograniczenia pulpitu do jednej kolumny. */
+.overview-secondary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.primary-stop-row {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.primary-stop-row > button {
+  flex: 1;
+  min-height: 48px;
+  min-width: 0;
+}
+@media (min-width: 800px) {
+  body:has(#overviewView:not([hidden])) .wrap {
+    max-width: 1560px;
+  }
+  #overviewView .sensor-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 16px;
+  }
+  #overviewView .sensor-grid > .card {
+    min-width: 0;
+    padding: 20px;
+  }
+  #overviewView .weather-card {
+    grid-column: 1/-1;
+  }
+  #overviewView .section-heading {
+    margin-bottom: 14px;
+  }
+  #overviewView .card h2 {
+    font-size: 20px;
+  }
+}
+@media (min-width: 1400px) {
+  #overviewView .sensor-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  #overviewView .weather-card {
+    grid-column: span 2;
+  }
+  #overviewView .water-main {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  #overviewView .water .value {
+    font-size: 42px;
+  }
+}

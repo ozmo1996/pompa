@@ -5,9 +5,20 @@ const A = require("./pressure-control-schema"),
 const L = { wlaczony: true, kw: 85, minHz: 35 };
 const p = (t, bar = 20) => ({ polaczony: true, aktualizacja: t, bar, napiecieV: 0.5 + bar / 10 });
 const d = (hz = 40) => ({ pracuje: true, awaria: false, moc: 60, czestotliwoscZadana: hz, czestotliwoscWyjsciowa: hz });
-function setup() {
+test("Regulator: minimum 0 Hz i brak RUN nie blokują ręcznie uzbrojonego rozruchu", () => {
   const c = new PressureController();
   c.configure({ ...A.defaults(), wlaczony: true });
+  c.started(100000);
+  assert.equal(A.validate({ ...A.defaults(), minHz: 0 }), null);
+  const r = c.step({ ...d(0), pracuje: false, moc: 0 }, p(101000, 0), { ...L, minHz: 0 }, 101000);
+  assert.equal(r.hz, 0.2);
+  assert.equal(c.fault, "");
+  c.stopped();
+  assert.equal(c.step({ ...d(0), pracuje: false, moc: 0 }, p(102000, 0), { ...L, minHz: 0 }, 102000).hold, true);
+});
+function setup() {
+  const c = new PressureController();
+  c.configure({ ...A.defaults(), minHz: 35, wlaczony: true });
   c.started(100000);
   return c;
 }
@@ -19,7 +30,7 @@ test("Regulator: domyślnie wyłączony, konfiguracja walidowana", () => {
   for (const change of [
     { bar: 31 },
     { maxBar: 26 },
-    { minHz: 30 },
+    { minHz: -1 },
     { maxHz: 51 },
     { id: "a" },
     { bar: NaN },
@@ -83,6 +94,7 @@ for (const [name, pressure, drive, lim, time] of [
 ])
   test("Regulator: zatrzymanie i zatrzask — " + name, () => {
     const c = setup();
+    if (name === "brak narastania") c.step(drive, pressure(100000), lim, 100000);
     assert.equal(c.step(drive, pressure(time), lim, time).stop, true);
     assert.equal(c.step(d(), p(time + 1000), L, time + 1000).stop, true);
     assert.ok(c.validateStart({}, L, time + 1000));

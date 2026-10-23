@@ -243,6 +243,9 @@ function evaluate() {
     prev.pracuje === true &&
     s.pracuje === false &&
     s.awaria !== true &&
+    num(prev.czestotliwoscWyjsciowa) &&
+    prev.czestotliwoscWyjsciowa > 0.7 &&
+    !(num(s.czestotliwoscZadana) && s.czestotliwoscZadana <= 0.7) &&
     t - lastStopCmdAt > P.stopBezPoleceniaS * 1000
   )
     event("nieoczekiwanyStop", {

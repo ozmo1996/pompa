@@ -62,7 +62,7 @@ class PressureController {
       l.kw >= 10 &&
       l.kw <= 90 &&
       finite(l.minHz) &&
-      l.minHz >= 35 &&
+      l.minHz >= 0 &&
       l.minHz <= this.cfg.minHz
     );
   }
@@ -89,10 +89,11 @@ class PressureController {
     if (s.pracuje === true) return "Pompa już pracuje — nie ponawiaj Start w trybie ciśnienia";
     if (!this.pressure(s.cisnienieTloczenia, t)) return "Brak aktualnego, poprawnego ciśnienia";
     if (s.cisnienieTloczenia.bar >= this.cfg.maxBar) return "Ciśnienie przekracza próg STOP";
-    if (!this.powerConfig(l)) return "Wymagany aktywny limit mocy 10–90 kW i minimum Hz 35…min Hz regulatora";
+    if (!this.powerConfig(l)) return "Wymagany aktywny limit mocy 10–90 kW i minimum Hz 0…min Hz regulatora";
     return null;
   }
   started(t) {
+    this.lowPressureSince = 0;
     this.armed = true;
     this.startedAt = t;
     this.lastStep = t;
@@ -101,6 +102,7 @@ class PressureController {
     this.state = "rozruch";
   }
   stopped() {
+    this.lowPressureSince = 0;
     this.armed = false;
     this.filtered = null;
     this.lastStep = 0;
@@ -113,11 +115,8 @@ class PressureController {
       this.state = "wyłączony";
       return { manual: true };
     }
-    if (d.pracuje !== true) {
-      if (this.armed && t - this.startedAt < 5000) {
-        this.state = "oczekiwanie na rozruch";
-        return { hold: true };
-      }
+    // RUN zanika poniżej częstotliwości startowej; nie oznacza to awarii ani zdjęcia STF.
+    if (d.pracuje !== true && !this.armed) {
       this.state = "gotowy — pompa zatrzymana";
       this.armed = false;
       return { hold: true };
@@ -130,8 +129,14 @@ class PressureController {
     if (!this.pressure(p, t)) return this.trip("Utrata lub błędny odczyt ciśnienia (ponad 3 s)");
     if (p.bar >= this.cfg.maxBar) return this.trip("Ciśnienie osiągnęło próg STOP " + this.cfg.maxBar + " bar");
     if (!this.powerConfig(l)) return this.trip("Wyłączony lub nieprawidłowy limit mocy");
-    if (t - this.startedAt > 3000 && (!finite(d.moc) || d.moc <= 0)) return this.trip("Brak wiarygodnego pomiaru mocy");
-    if (t - this.startedAt > 10000 && p.bar < 2) return this.trip("Brak narastania ciśnienia: poniżej 2 bar po 10 s");
+    if (t - this.startedAt > 3000 && d.czestotliwoscWyjsciowa >= 5 && (!finite(d.moc) || d.moc <= 0))
+      return this.trip("Brak wiarygodnego pomiaru mocy");
+    // Kontrola braku wody dopiero przy rzeczywistym rozpędzeniu, nie podczas przejścia przez 0 Hz.
+    if (d.czestotliwoscWyjsciowa >= 35 && p.bar < 2) {
+      this.lowPressureSince = this.lowPressureSince || t;
+      if (t - this.lowPressureSince > 10000)
+        return this.trip("Brak narastania ciśnienia: poniżej 2 bar przez 10 s przy co najmniej 35 Hz");
+    } else this.lowPressureSince = 0;
     const hz = d.czestotliwoscZadana;
     if (!finite(hz) || hz < 0 || hz > 50 || !finite(d.czestotliwoscWyjsciowa))
       return this.trip("Nieprawidłowy pomiar częstotliwości");
@@ -151,7 +156,10 @@ class PressureController {
       this.state = "utrzymuje ciśnienie";
       return { hz };
     }
-    if (error > 0 && (!finite(d.moc) || d.moc <= 0 || d.moc >= l.kw - 3)) {
+    if (
+      error > 0 &&
+      ((d.czestotliwoscWyjsciowa >= 5 && (!finite(d.moc) || d.moc <= 0)) || (finite(d.moc) && d.moc >= l.kw - 3))
+    ) {
       this.state = "ograniczenie mocą — bez zwiększania Hz";
       return { hz };
     }

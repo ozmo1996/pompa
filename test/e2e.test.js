@@ -57,6 +57,23 @@ async function open({ data, seed = {}, clockSkew = 0, sdkFails = false, clock = 
 }
 const writes = (page, p) => page.evaluate((p) => globalThis.__fb.writes.filter((w) => w.path === p), p);
 
+test("Dwa zatrzymania: oba dostępne bez falownika, wysyłają odrębne tryby bez Hz", async () => {
+  const { page, ctx } = await open({ data: seedData(Date.now(), { fresh: false }) });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#controlTab");
+  for (const [id, mode] of [
+    ["gentleStopPump", "lagodny"],
+    ["stopPump", "natychmiastowy"],
+  ]) {
+    await page.click("#" + id);
+    const all = await writes(page, "pompa/polecenie");
+    assert.equal(all.at(-1).value.akcja, "stop");
+    assert.equal(all.at(-1).value.trybStop, mode);
+    assert.equal("czestotliwosc" in all.at(-1).value, false);
+  }
+  await ctx.close();
+});
+
 test("Kamery wycofane: główna aplikacja nie ma zakładki ani żądań obrazu", async () => {
   const { page, ctx, errors } = await open();
   const cameraRequests = [];
