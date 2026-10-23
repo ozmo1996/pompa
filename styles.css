@@ -480,6 +480,7 @@ button:focus-visible {
 }
 .range {
   display: flex;
+  flex-wrap: wrap;
   gap: 7px;
   overflow: auto;
   padding: 3px;
@@ -2497,7 +2498,6 @@ body:has(#controlView:not([hidden])) .hero p.small {
   font-size: 22px;
 }
 #startPressurePump {
-  margin-top: 16px;
   max-width: 100%;
   white-space: normal;
 }
@@ -2510,6 +2510,31 @@ body:has(#controlView:not([hidden])) .hero p.small {
 .summary-tile b,
 .summary-tile span {
   display: block;
+}
+.summary-meter-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 18px;
+}
+.stats-period {
+  margin: 16px 0;
+}
+.stats-period-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 12px;
+  align-items: end;
+}
+.stats-period-fields label {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.stats-period-fields input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .summary-tile small {
   color: var(--muted);

@@ -626,6 +626,98 @@ test("Regulator ciśnienia: nie pozwala włączyć nowego trybu podczas pracy an
   await ctx.close();
 });
 
+test("Praca automatyczna → ręczna: bez STOP/START ani zapisu Hz, dopiero po potwierdzeniu Raspberry", async () => {
+  const t = Date.now(),
+    data = seedData(t);
+  data.pompa.ustawienia.regulatorCisnienia = {
+    wersja: 1,
+    id: "running-auto",
+    wlaczony: true,
+    bar: 25,
+    minHz: 0,
+    maxHz: 50,
+    maxBar: 32,
+    zmieniono: t,
+    zmienil: "test",
+  };
+  data.pompa.statusRegulatoraCisnienia = {
+    wersja: 1,
+    ustawieniaId: "running-auto",
+    wlaczony: true,
+    aktualizacja: t,
+    stan: "reguluje",
+    awaria: "",
+  };
+  const { page, ctx, errors } = await open({ data, clock: true });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#controlTab");
+  assert.equal(await page.locator("#pumpControlCard #startPressurePump").count(), 1);
+  assert.equal(await page.isEnabled("#setFrequency"), false);
+  page.once("dialog", (d) => d.dismiss());
+  await page.click("#switchToManual");
+  assert.equal((await writes(page, "pompa/ustawienia/regulatorCisnienia")).length, 0);
+  page.once("dialog", (d) => d.accept());
+  await page.click("#switchToManual");
+  const saved = (await writes(page, "pompa/ustawienia/regulatorCisnienia")).at(-1).value;
+  assert.equal(saved.wlaczony, false);
+  assert.equal(saved.bar, 25);
+  assert.equal((await writes(page, "pompa/polecenie")).length, 0);
+  assert.equal(await page.isEnabled("#setFrequency"), false);
+  await page.evaluate(() => {
+    globalThis.__fb.set("pompa/statusRegulatoraCisnienia/wlaczony", false);
+  });
+  assert.equal(await page.isEnabled("#setFrequency"), false); // stary identyfikator potwierdzenia
+  await page.evaluate(() => {
+    const cfg = globalThis.__fb.read("pompa/ustawienia/regulatorCisnienia");
+    globalThis.__fb.set("pompa/statusRegulatoraCisnienia/ustawieniaId", cfg.id);
+  });
+  assert.equal(await page.isEnabled("#setFrequency"), true);
+  assert.equal(Number(await page.inputValue("#controlHz")), 42);
+  assert.match(await page.textContent("#manualModeMessage"), /potwierdziło/);
+  assert.equal((await writes(page, "pompa/polecenie")).length, 0);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("Statystyki: dokładny okres filtruje próbki, przybliżenie i walidacja nie tworzą danych", async () => {
+  const t = Math.floor(Date.now() / 60000) * 60000,
+    data = seedData(t);
+  data.pompa.historia = {
+    before: { czas: t - 21 * 60000, poziom: 99 },
+    first: { czas: t - 19 * 60000, poziom: 10 },
+    second: { czas: t - 11 * 60000, poziom: 20 },
+    after: { czas: t - 9 * 60000, poziom: 88 },
+  };
+  const { page, ctx, errors } = await open({ data, clock: true });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#statsTab");
+  const local = (value) => {
+    const d = new Date(value);
+    return new Date(value - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  };
+  await page.fill("#statsFrom", local(t - 20 * 60000));
+  await page.fill("#statsTo", local(t - 10 * 60000));
+  await page.locator("#statsPeriodForm button[type=submit]").click();
+  await page.waitForFunction(() => document.getElementById("sampleCount").textContent === "2 próbek");
+  await page.click("#statsZoomIn");
+  await page.waitForFunction(() => document.getElementById("sampleCount").textContent === "0 próbek");
+  const width = await page.evaluate(
+    () => new Date(document.getElementById("statsTo").value) - new Date(document.getElementById("statsFrom").value),
+  );
+  assert.equal(width, 5 * 60000);
+  await page.fill("#statsFrom", local(t - 5 * 60000));
+  await page.fill("#statsTo", local(t - 10 * 60000));
+  await page.locator("#statsPeriodForm button[type=submit]").click();
+  assert.match(await page.textContent("#statsPeriodMessage"), /początek musi/);
+  for (const width of [320, 390, 1024]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  }
+  assert.equal((await writes(page, "pompa/polecenie")).length, 0);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
 test("Ciśnienie na tłoczeniu: pomiar, błędny sygnał, rozłączenie i ręczny wybór do tabeli", async () => {
   const { page, ctx, errors } = await open();
   await page.waitForSelector("#dashboard:not([hidden])");
@@ -787,6 +879,9 @@ test("ND20: brak miernika i świeży odczyt są wyraźnie rozróżnione", async 
   await page.waitForSelector("#dashboard:not([hidden])");
   assert.match(await page.textContent("#nd20State"), /Oczekiwanie na podłączenie/);
   assert.equal(await page.textContent("#nd20Power"), "— kW");
+  assert.equal(await page.textContent("#summaryMeterPower"), "— kW");
+  assert.equal(await page.textContent("#summaryMeterHz"), "— Hz");
+  assert.equal(await page.locator("#summaryPressureMode").count(), 0);
   await page.evaluate(() =>
     globalThis.__fb.set("pompa/status/nd20", {
       polaczony: true,
@@ -799,6 +894,14 @@ test("ND20: brak miernika i świeży odczyt są wyraźnie rozróżnione", async 
   );
   await page.waitForFunction(() => document.getElementById("nd20Power").textContent.includes("74,3"));
   assert.equal(await page.textContent("#nd20Hz"), "50 Hz");
+  assert.equal(await page.textContent("#summaryMeterPower"), "74,3 kW");
+  assert.equal(await page.textContent("#summaryMeterHz"), "50 Hz");
+  await page.evaluate(() => globalThis.__fb.set("pompa/status/polaczony", false));
+  assert.equal(await page.textContent("#summaryMeterHz"), "50 Hz");
+  await page.evaluate(() => globalThis.__fb.set("pompa/status/nd20/aktualizacja", Date.now() - 20000));
+  assert.equal(await page.textContent("#summaryMeterPower"), "— kW");
+  assert.equal(await page.textContent("#summaryMeterHz"), "— Hz");
+  assert.match(await page.textContent("#summaryMeterState"), /Brak aktualnego/);
   await page.evaluate(() =>
     globalThis.__fb.set("pompa/historia/agregat-test", {
       czas: Date.now() - 60000,
@@ -810,6 +913,34 @@ test("ND20: brak miernika i świeży odczyt są wyraźnie rozróżnione", async 
   await page.waitForFunction(() => document.getElementById("pcNote").textContent.includes("agregat: zapis"));
   assert.equal(await page.textContent("#pcTitle"), "Moc czynna agregatu");
   assert.match(await page.textContent("#pcMin"), /70/);
+  await ctx.close();
+});
+
+test("ND20: nowy kafelek zachowuje pozycję poprzedniego skrótu regulacji ciśnienia", async () => {
+  const { page, ctx, errors } = await open();
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "pompa.overview.layout.v1",
+      JSON.stringify({ summary: ["summaryPressureMode", "summaryWater", "summaryPump"] }),
+    ),
+  );
+  await page.reload();
+  await page.waitForSelector("#dashboard:not([hidden])");
+  const tiles = await page
+    .locator(".overview-summary > article")
+    .evaluateAll((nodes) => nodes.map((n) => n.dataset.overviewTile));
+  assert.equal(tiles[0], "summaryMeterPower");
+  assert.equal(tiles[1], "summaryWater");
+  assert.equal(new Set(tiles).size, 6);
+  await page.click("#editOverviewLayout");
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Przesuń później: Agregat — moc i częstotliwość ND20", exact: true })
+      .count(),
+    1,
+  );
+  assert.deepEqual(errors, []);
   await ctx.close();
 });
 

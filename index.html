@@ -178,8 +178,9 @@
               ><span id="summaryWaterTempState">Brak pomiaru</span>
             </article>
             <article class="card summary-tile">
-              <small>Regulacja ciśnienia</small><b id="summaryPressureMode">Tryb ręczny</b
-              ><span id="summaryPressureTarget">—</span>
+              <small>Agregat · ND20</small>
+              <div class="summary-meter-values"><b id="summaryMeterPower">— kW</b><b id="summaryMeterHz">— Hz</b></div>
+              <span id="summaryMeterState">Brak aktualnego pomiaru ND20</span>
             </article>
           </div>
           <div class="grid sensor-grid">
@@ -452,8 +453,11 @@
               </div>
               <div class="control-actions">
                 <button id="startPump" type="button">Start ręczny</button
-                ><button id="setFrequency" type="button" class="secondary">Ustaw Hz</button>
+                ><button id="startPressurePump" type="button">Uruchom regulację ciśnienia</button>
+                <button id="setFrequency" type="button" class="secondary">Ustaw Hz</button>
+                <button id="switchToManual" type="button" class="secondary" hidden>Przejdź na sterowanie ręczne</button>
               </div>
+              <p id="manualModeMessage" class="small" role="status" aria-live="polite"></p>
               <p id="stopNote" class="small stop-note" role="status" hidden></p>
             </div>
             <div id="commandMessage" class="notice" role="status" aria-live="polite">
@@ -603,10 +607,10 @@
               <div class="metric"><b id="pressureControlTarget">—</b><small>Cel</small></div>
               <div class="metric"><b id="pressureControlHz">— Hz</b><small>Zadane falownikowi</small></div>
             </div>
-            <button id="startPressurePump" type="button">Uruchom regulację ciśnienia</button>
             <p class="small">
-              Najpierw włącz i zapisz automat poniżej. Przycisk uruchamia pompę według zapisanych ustawień, po
-              potwierdzeniu gotowości Raspberry i Twojej zgodzie. Zatrzymaj i STOP są dostępne u góry.
+              Najpierw włącz i zapisz automat poniżej. Przycisk „Uruchom regulację ciśnienia” u góry uruchamia pompę
+              według zapisanych ustawień, po potwierdzeniu gotowości Raspberry i Twojej zgodzie. Zatrzymaj i STOP są
+              dostępne u góry.
             </p>
             <details class="control-settings" id="pressureSettings">
               <summary>Ustaw automat ciśnienia</summary>
@@ -677,10 +681,26 @@
               <h2>Statystyki i cykle zbiornika</h2>
             </div>
             <div class="range" aria-label="Zakres statystyk">
-              <button type="button" class="active" data-days="1">24 h</button
+              <button type="button" data-days="0.041666666666666664">1 h</button
+              ><button type="button" data-days="0.25">6 h</button
+              ><button type="button" class="active" data-days="1">24 h</button
               ><button type="button" data-days="7">7 dni</button><button type="button" data-days="30">30 dni</button>
             </div>
           </div>
+          <form id="statsPeriodForm" class="card stats-period">
+            <h3>Dokładny okres</h3>
+            <div class="stats-period-fields">
+              <label>Od<input id="statsFrom" type="datetime-local" step="1" required /></label>
+              <label>Do<input id="statsTo" type="datetime-local" step="1" required /></label>
+              <button type="submit">Pokaż okres</button>
+              <button id="statsZoomIn" type="button" class="secondary">Przybliż ×2</button>
+            </div>
+            <p class="small">
+              Czas lokalny urządzenia. Dostępne ostatnie 30 dni. Przybliżenie skupia się na zaznaczonej próbce lub
+              środku wykresu. Dokładność zależy od zapisanych próbek — przybliżenie nie tworzy nowych pomiarów.
+            </p>
+            <p id="statsPeriodMessage" class="small" role="status" aria-live="polite"></p>
+          </form>
           <p id="statsRefreshState" class="small" role="status">Odświeżanie co minutę podczas oglądania.</p>
           <label for="statsMetric" class="chart-selector">Wybierz parametr wykresu</label>
           <select id="statsMetric">

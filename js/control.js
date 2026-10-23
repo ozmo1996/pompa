@@ -17,7 +17,7 @@ import {
   validateLimit,
 } from "./logic.js";
 import { $, S, dbRef, el, fb, isLive, now, safe, user } from "./state.js";
-import { pressureMode, pressureCanStart, renderPressureControl } from "./pressureControl.js";
+import { pressureMode, pressureCanStart, renderPressureControl, manualModeReady } from "./pressureControl.js";
 import { waterCanStart, renderWaterSafety } from "./waterSafety.js";
 
 const { silnik: M, progi: P } = CFG;
@@ -25,7 +25,8 @@ const { silnik: M, progi: P } = CFG;
 // ---------- stan sterowania ----------
 const cmd = { busy: false, id: null, timer: null };
 let controlDirty = false, // użytkownik zmienia częstotliwość — nie nadpisuj jej statusem
-  limitDirty = false; // niezapisane zmiany limitu
+  limitDirty = false, // niezapisane zmiany limitu
+  resyncAfterAuto = false;
 
 /** Start i zmiana częstotliwości: tylko przy świeżych danych, połączonym falowniku i bez awarii. */
 const canDrive = () => !!user() && isLive() && S.status?.polaczony === true && S.status?.awaria !== true;
@@ -40,6 +41,7 @@ export function resetControl() {
   Object.assign(cmd, { busy: false, id: null, timer: null });
   controlDirty = false;
   limitDirty = false;
+  resyncAfterAuto = false;
 }
 
 // ---------- licznik mocy (SVG) ----------
@@ -237,6 +239,8 @@ const message = (t) => ($("commandMessage").textContent = t);
 async function sendCommand(action, stopMode = "lagodny", automaticStart = false) {
   const stop = action === "stop";
   if (stop ? !canStop() : cmd.busy || !canDrive()) return;
+  if (!stop && !pressureMode() && !manualModeReady())
+    return message("Poczekaj na potwierdzenie trybu ręcznego przez Raspberry.");
   const startingConfigId = S.pressureCfg?.id;
   if (action === "start" && automaticStart !== pressureMode())
     return message("Tryb sterowania zmienił się — wybierz właściwy przycisk startu.");
@@ -283,9 +287,11 @@ async function sendCommand(action, stopMode = "lagodny", automaticStart = false)
       if (
         cmd.busy ||
         !canDrive() ||
+        (action === "czestotliwosc" && !manualModeReady()) ||
         (action === "start" &&
           (!pressureCanStart() ||
             !waterCanStart() ||
+            (!automaticStart && !manualModeReady()) ||
             automaticStart !== pressureMode() ||
             (automaticStart && startingConfigId !== S.pressureCfg?.id)))
       ) {
@@ -344,6 +350,12 @@ export function renderControl(live = isLive()) {
     u = !!user(),
     drive = canDrive() && !cmd.busy,
     stop = canStop();
+  if (pressureMode()) resyncAfterAuto = true;
+  if (resyncAfterAuto && manualModeReady() && live && isNum(s?.czestotliwoscZadana)) {
+    controlDirty = false;
+    syncFrequency(s.czestotliwoscZadana);
+    resyncAfterAuto = false;
+  }
   $("pumpState").textContent = driveStateText(s, live);
   $("controlModeSummary").textContent = S.pressureBackend?.awaria
     ? "Blokada automatu: " + S.pressureBackend.awaria
@@ -363,11 +375,11 @@ export function renderControl(live = isLive()) {
         ? "Brak zgłoszonej awarii"
         : "Oczekiwanie na potwierdzenie stanu";
   const inputs = u && live && s?.polaczony === true && !cmd.busy;
-  $("controlHz").disabled = !inputs || pressureMode();
-  $("controlHzSlider").disabled = !inputs || pressureMode();
-  $("startPump").disabled = !drive || pressureMode() || !pressureCanStart() || !waterCanStart();
+  $("controlHz").disabled = !inputs || !manualModeReady();
+  $("controlHzSlider").disabled = !inputs || !manualModeReady();
+  $("startPump").disabled = !drive || !manualModeReady() || !pressureCanStart() || !waterCanStart();
   $("startPressurePump").disabled = !drive || !pressureMode() || !pressureCanStart() || !waterCanStart();
-  $("setFrequency").disabled = !drive || pressureMode();
+  $("setFrequency").disabled = !drive || !manualModeReady();
   $("stopPump").disabled = !stop;
   $("gentleStopPump").disabled = !stop;
   $("stopNote").hidden = !stop || live;

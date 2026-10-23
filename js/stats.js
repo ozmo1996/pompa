@@ -1,5 +1,5 @@
 // Zakładka „Statystyki”: historia poziomu i pracy, cykle zbiornika, ostatnie próbki.
-import { chartSegments, cyclesFrom, duration, fmt, isNum, niceStep, waterVolumeM3, lowerBound } from "./logic.js";
+import { CFG, chartSegments, cyclesFrom, duration, fmt, isNum, niceStep, waterVolumeM3, lowerBound } from "./logic.js";
 import { workHistory } from "./history.js";
 import { $, S, el, now, onShowView, user } from "./state.js";
 
@@ -7,6 +7,15 @@ let days = 1,
   rows = [],
   loadSeq = 0,
   pendingLoads = 0;
+let customPeriod = null,
+  displayedPeriod = null;
+const period = () => customPeriod || { from: now() - days * 86400e3, to: now() };
+const localDateInput = (time) => new Date(time - new Date(time).getTimezoneOffset() * 60000).toISOString().slice(0, 19);
+function fillPeriod() {
+  const { from, to } = period();
+  $("statsFrom").value = localDateInput(from);
+  $("statsTo").value = localDateInput(to);
+}
 const charts = {
   waterChart: ["poziom", "#4cc9e8", "%", 100, 6 * 60000],
   pressureChart: ["cisnienieBar", "#4cc9e8", "bar", 40, 20000, "sesjaCisnienia"],
@@ -20,6 +29,13 @@ let activeChart = "waterChart",
 
 export function resetStats() {
   rows = [];
+  customPeriod = null;
+  displayedPeriod = null;
+  days = 1;
+  fillPeriod();
+  document
+    .querySelectorAll("#statsView .range button")
+    .forEach((button) => button.classList.toggle("active", button.dataset.days === "1"));
   selectedPoint = null;
   plot = null;
   activeChart = "waterChart";
@@ -63,8 +79,7 @@ function drawChart(id, key, color, unit, minimumMax, maxGap, sessionKey) {
     c.fillText(String(Math.round(maxY * (1 - i / 4))), 4, y + 4);
   }
   c.fillText(unit, 4, 12);
-  const first = now() - days * 86400e3,
-    last = now();
+  const { from: first, to: last } = displayedPeriod || period();
   plot = { canvas, points, first, last, pad, iw, ih, maxY, unit, maxGap };
   const range = $("statsPointIndex");
   range.disabled = !points.length;
@@ -256,12 +271,18 @@ async function loadStats(maxAge = 60000) {
   }
   pendingLoads++;
   try {
-    const r = await workHistory.ensure(now() - days * 86400e3, maxAge);
+    const chosen = period();
+    const r = await workHistory.ensure(chosen.from, maxAge);
     if (seq !== loadSeq) return; // w międzyczasie wybrano inny zakres
-    rows = r.filter((x) => x.typ !== "agregat");
+    displayedPeriod = chosen;
+    rows = r.filter((x) => x.czas >= chosen.from && x.czas <= chosen.to && x.typ !== "agregat");
     renderStats();
     $("statsRefreshState").textContent =
-      "Odświeżanie co minutę · ostatnio " + new Date(now()).toLocaleTimeString("pl-PL");
+      (customPeriod ? "Wybrany stały okres · sprawdzanie zapisów co minutę" : "Odświeżanie co minutę") +
+      " · ostatnio " +
+      new Date(now()).toLocaleTimeString("pl-PL");
+    $("statsPeriodMessage").textContent =
+      "Zakres: " + when(chosen.from) + " — " + when(chosen.to) + ". " + rows.length + " zapisanych próbek.";
   } catch {
     if (seq === loadSeq)
       $("statsRefreshState").textContent = "Nie udało się odświeżyć historii. Wybierz zakres, aby spróbować ponownie.";
@@ -273,6 +294,35 @@ async function loadStats(maxAge = 60000) {
 }
 
 export function initStats() {
+  fillPeriod();
+  const setPeriod = (from, to) => {
+    const t = now();
+    if (!Number.isFinite(from) || !Number.isFinite(to) || from >= to || to - from < 60000) {
+      $("statsPeriodMessage").textContent =
+        "Wybierz poprawny okres trwający co najmniej minutę; początek musi być przed końcem.";
+      return;
+    }
+    if (from < t - CFG.historia.maxDni * 86400e3 || to > t + 1000) {
+      $("statsPeriodMessage").textContent = "Wybierz okres z ostatnich 30 dni, bez dat w przyszłości.";
+      return;
+    }
+    customPeriod = { from, to: Math.min(to, t) };
+    selectedPoint = null;
+    document.querySelectorAll("#statsView .range button").forEach((x) => x.classList.remove("active"));
+    fillPeriod();
+    loadStats();
+  };
+  $("statsPeriodForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    setPeriod(new Date($("statsFrom").value).getTime(), new Date($("statsTo").value).getTime());
+  });
+  $("statsZoomIn").addEventListener("click", () => {
+    const { from, to } = displayedPeriod || period();
+    const width = Math.max(60000, (to - from) / 2);
+    const center = selectedPoint?.czas ?? (from + to) / 2;
+    const left = Math.max(from, Math.min(to - width, center - width / 2));
+    setPeriod(left, left + width);
+  });
   $("statsMetric").addEventListener("change", () => {
     activeChart = $("statsMetric").value;
     selectedPoint = null;
@@ -310,6 +360,9 @@ export function initStats() {
       document.querySelectorAll("#statsView .range button").forEach((x) => x.classList.remove("active"));
       button.classList.add("active");
       days = Number(button.dataset.days) || 1;
+      customPeriod = null;
+      selectedPoint = null;
+      fillPeriod();
       loadStats();
     }),
   );

@@ -22,7 +22,7 @@ export function renderOverview() {
     live ? "ok" : "warning",
   );
   status("driveConnection", drive ? "Falownik: odpowiada" : "Falownik: brak potwierdzenia", drive ? "ok" : "warning");
-  const meter = S.connected && s?.nd20?.polaczony === true && isFresh(s.nd20.aktualizacja, t, 15000);
+  const meter = S.connected && !S.denied && s?.nd20?.polaczony === true && isFresh(s.nd20.aktualizacja, t, 15000);
   status("meterConnection", meter ? "ND20: odpowiada" : "ND20: brak potwierdzenia", meter ? "ok" : "neutral");
   $("summaryPump").textContent = driveStateText(s, live);
   $("summaryPump").className = s?.awaria && drive ? "status-danger" : "";
@@ -62,8 +62,9 @@ export function renderOverview() {
     isFresh(s.aktualizacjaTemperatury, t, 15000);
   $("summaryWaterTemp").textContent = fmt(temp ? s.temperaturaWody : null, " °C");
   $("summaryWaterTempState").textContent = temp ? "Aktualny pomiar DS18B20" : "Brak świeżego pomiaru DS18B20";
-  $("summaryPressureMode").textContent = S.pressureCfg?.wlaczony ? "Automat" : "Tryb ręczny";
-  $("summaryPressureTarget").textContent = S.pressureCfg?.wlaczony
-    ? "Cel " + fmt(S.pressureCfg.bar, " bar") + " · " + S.pressureCfg.minHz + "–" + S.pressureCfg.maxHz + " Hz"
-    : "Częstotliwość ustawiana przez operatora";
+  $("summaryMeterPower").textContent = fmt(meter ? s.nd20.mocKw : null, " kW");
+  $("summaryMeterHz").textContent = fmt(meter ? s.nd20.czestotliwoscHz : null, " Hz");
+  $("summaryMeterState").textContent = meter
+    ? "Moc czynna 3 faz · częstotliwość agregatu"
+    : "Brak aktualnego pomiaru ND20";
 }

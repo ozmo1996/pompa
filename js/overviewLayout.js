@@ -12,7 +12,7 @@ const definitions = [
       ["summaryWater", "Poziom wody"],
       ["summaryPower", "Moc falownika"],
       ["summaryWaterTemp", "Temperatura wody"],
-      ["summaryPressureMode", "Regulacja ciśnienia"],
+      ["summaryMeterPower", "Agregat — moc i częstotliwość ND20"],
     ],
   ],
   [
@@ -41,7 +41,11 @@ export function initOverviewLayout() {
   const apply = (saved = {}) => {
     for (const group of groups) {
       const byId = new Map(group.tiles.map((tile) => [tile.id, tile]));
-      const order = Array.isArray(saved?.[group.id]) ? saved[group.id] : [];
+      const order = Array.isArray(saved?.[group.id])
+        ? saved[group.id].map((id) =>
+            group.id === "summary" && id === "summaryPressureMode" ? "summaryMeterPower" : id,
+          )
+        : [];
       const valid = [...new Set(order)].filter((id) => byId.has(id));
       group.order = [...valid, ...group.tiles.map((tile) => tile.id).filter((id) => !valid.includes(id))];
       for (const id of group.order) {

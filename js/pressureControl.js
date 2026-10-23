@@ -4,7 +4,8 @@ import { fmt, isFresh, parseDecimal } from "./logic.js";
 const A = globalThis.POMPA_PRESSURE_CONTROL;
 let dirty = false,
   busy = false,
-  denied = false;
+  denied = false,
+  manualRequestId = null;
 export const pressureMode = () => S.pressureCfg?.wlaczony === true || S.pressureBackend?.wlaczony === true;
 export function pressureBackendReady() {
   const b = S.pressureBackend;
@@ -14,6 +15,10 @@ export function pressureBackendReady() {
     b.ustawieniaId === (S.pressureCfg?.id || "domyslne")
   );
 }
+export const manualModeReady = () =>
+  !pressureMode() &&
+  (S.pressureCfg?.wlaczony !== false ||
+    (pressureBackendReady() && S.pressureBackend?.wlaczony === false && !S.pressureBackend.awaria));
 export function pressureCanStart() {
   if (S.pressureBackend?.awaria) return false;
   const p = S.status?.cisnienieTloczenia;
@@ -68,14 +73,21 @@ export function resetPressureControl() {
   busy = false;
   denied = false;
   S.pressureCfg = null;
+  manualRequestId = null;
   S.pressureBackend = null;
   fill();
   $("pressureControlMessage").textContent = "";
+  $("manualModeMessage").textContent = "";
 }
 export function renderPressureControl() {
   const b = S.pressureBackend,
     ready = pressureBackendReady(),
     on = pressureMode();
+  if (manualRequestId && manualModeReady() && b?.ustawieniaId === manualRequestId) {
+    $("manualModeMessage").textContent =
+      "Raspberry potwierdziło tryb ręczny. Pompa nie została zatrzymana; możesz teraz ustawiać Hz.";
+    manualRequestId = null;
+  }
   $("pressureControlState").textContent = !ready
     ? "Oczekiwanie na potwierdzenie regulatora Raspberry"
     : b.awaria
@@ -92,8 +104,62 @@ export function renderPressureControl() {
   $("pressureControlTarget").textContent = on ? fmt(S.pressureCfg?.bar, " bar") : "—";
   $("pressureControlHz").textContent = fmt(isLive() ? S.status?.czestotliwoscZadana : null, " Hz");
   $("savePressureControl").disabled = !user() || !S.connected || S.denied || denied || busy;
+  $("switchToManual").hidden = !on;
+  $("switchToManual").disabled =
+    !user() ||
+    !S.connected ||
+    S.denied ||
+    denied ||
+    busy ||
+    !S.pressureCfg?.wlaczony ||
+    !ready ||
+    !isLive() ||
+    S.status?.polaczony !== true;
   for (const id of ["pressureAutoOn", "pressureSetBar", "pressureMinHz", "pressureMaxHz", "pressureStopBar"])
     $(id).disabled = !user() || denied || busy;
+}
+async function switchToManual() {
+  if ($("switchToManual").disabled || !pressureMode()) return;
+  const previousId = S.pressureCfg?.id;
+  if (
+    !confirm(
+      "Przejść na sterowanie ręczne bez zatrzymywania pompy? Automat przestanie utrzymywać ciśnienie. Bieżąca nastawa Hz zostanie zachowana, a limit mocy i zabezpieczenie poziomu wody pozostaną zgodnie ze swoimi ustawieniami. Niezapisane zmiany formularza nie zostaną zastosowane.",
+    )
+  )
+    return;
+  if (
+    !user() ||
+    !S.connected ||
+    S.denied ||
+    denied ||
+    busy ||
+    previousId !== S.pressureCfg?.id ||
+    !pressureBackendReady()
+  )
+    return;
+  busy = true;
+  renderPressureControl();
+  $("manualModeMessage").textContent = "Wyłączanie automatu — oczekiwanie na potwierdzenie Raspberry. Nie zmieniam Hz.";
+  const id = crypto.randomUUID(),
+    changedAt = now(),
+    email = user()?.email || "";
+  manualRequestId = id;
+  try {
+    const result = await fb.runTransaction(dbRef("pompa/ustawienia/regulatorCisnienia"), (current) => {
+      if (!current || current.id !== previousId || current.wlaczony !== true) return;
+      return { ...current, id, wlaczony: false, zmieniono: changedAt, zmienil: email };
+    });
+    if (!result.committed) throw new Error("conflict");
+    dirty = false;
+    fill();
+  } catch {
+    manualRequestId = null;
+    $("manualModeMessage").textContent =
+      "Nie potwierdzono zmiany trybu. Sprawdź połączenie lub zmiany z innego urządzenia; nie zakładaj, że automat został wyłączony.";
+  } finally {
+    busy = false;
+    renderPressureControl();
+  }
 }
 async function save() {
   const c = {
@@ -174,4 +240,5 @@ export function initPressureControl() {
       $("pressureControlMessage").textContent = "Niezapisane zmiany";
     });
   $("savePressureControl").addEventListener("click", save);
+  $("switchToManual").addEventListener("click", switchToManual);
 }
