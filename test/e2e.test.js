@@ -692,8 +692,17 @@ test("Statystyki: dokładny okres filtruje próbki, przybliżenie i walidacja ni
   await page.waitForSelector("#dashboard:not([hidden])");
   await page.click("#statsTab");
   const local = (value) => {
-    const d = new Date(value);
-    return new Date(value - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    return new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "Europe/Warsaw",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    })
+      .format(new Date(value))
+      .replace(" ", "T");
   };
   await page.fill("#statsFrom", local(t - 20 * 60000));
   await page.fill("#statsTo", local(t - 10 * 60000));
