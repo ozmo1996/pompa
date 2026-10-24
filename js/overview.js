@@ -50,6 +50,7 @@ export function renderOverview() {
   $("summaryWaterDetail").textContent = water ? fmt(s.poziomWodyProc, " %") + " poziomu" : "Brak aktualnego pomiaru";
   const power = drive ? powerReading(s) : null;
   $("summaryPower").textContent = (power?.est ? "≈ " : "") + fmt(power ? Math.max(0, power.kw) : null, " kW");
+  $("summaryDriveHz").textContent = fmt(drive ? s.czestotliwoscWyjsciowa : null, " Hz");
   $("summaryPowerDetail").textContent = !power
     ? "Brak aktualnego pomiaru"
     : power.est

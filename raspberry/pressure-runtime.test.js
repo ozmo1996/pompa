@@ -127,9 +127,46 @@ test("Runtime: wyłączenie pozostawia bieżące Hz, bez powrotu do starego celu
   x.r.engine.started(Date.now() - 2000);
   await x.r.control(drive(), x.state, x.limit);
   x.configure(A.defaults());
+  await x.r.tail;
   await x.r.control({ ...drive(), czestotliwoscZadana: 38 }, x.state, x.limit);
   assert.equal(x.limit.hzCel, 38);
   assert.equal(x.stops(), 0);
+});
+
+test("Runtime: jawne świeże przejęcie pracującej pompy zachowuje 40 Hz i nie wysyła STOP", async (t) => {
+  const x = setup(t);
+  Object.assign(x.state, drive(), { polaczony: true, aktualizacja: Date.now() });
+  x.configure({ ...A.defaults(), id: "manual-first" });
+  await x.r.control(drive(), x.state, x.limit);
+  x.limit.hzCel = 48;
+  x.configure({ ...A.defaults(), id: "handoff-new", wlaczony: true, zmieniono: Date.now() });
+  await x.r.tail;
+  assert.equal(x.r.engine.fault, "");
+  assert.equal(x.r.engine.armed, true);
+  assert.equal(x.limit.hzCel, 40);
+  assert.equal(x.limit.hzEff, 40);
+  assert.equal((await x.r.control(drive(), x.state, x.limit)).hz, null);
+  assert.equal(x.stops(), 0);
+});
+
+test("Runtime: stare przełączenie, brak pomiaru i przejęcie po restarcie nie uzbrajają automatu", async (t) => {
+  for (const variant of ["old", "sensor", "restart", "stopping"]) {
+    const x = setup(t);
+    Object.assign(x.state, drive(), { polaczony: true, aktualizacja: Date.now() });
+    if (variant !== "restart") x.configure({ ...A.defaults(), id: "manual-first" });
+    await x.r.control(drive(), x.state, x.limit);
+    if (variant === "sensor") x.state.cisnienieTloczenia.aktualizacja = Date.now() - 4000;
+    if (variant === "stopping") x.r.operatorStopping = true;
+    x.configure({
+      ...A.defaults(),
+      id: "handoff-new",
+      wlaczony: true,
+      zmieniono: Date.now() - (variant === "old" ? 20000 : 0),
+    });
+    await x.r.tail;
+    assert.equal(x.r.engine.armed, false, variant);
+    assert.ok(x.r.engine.fault, variant);
+  }
 });
 test("Runtime: transakcje falownika są wykonywane kolejno, nie równolegle", async (t) => {
   const x = setup(t);

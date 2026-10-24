@@ -33,10 +33,44 @@ class PressureRuntime {
     db.ref(options.base + "/ustawienia/regulatorCisnienia").on(
       "value",
       (snap) => {
-        this.engine.configure(snap.val(), this.lastState?.pracuje === true);
-        this.configRead = true;
-        this.persist();
-        this.publish();
+        const input = snap.val();
+        const apply = () => {
+          const t = Date.now(),
+            s = this.o.state(),
+            running = this.lastState?.pracuje === true || s?.pracuje === true;
+          const takeover =
+            this.configRead &&
+            running &&
+            !this.engine.cfg.wlaczony &&
+            input?.wlaczony === true &&
+            input.id !== this.engine.cfg.id;
+          if (takeover) {
+            const fresh =
+              Number.isFinite(input.zmieniono) &&
+              t - input.zmieniono >= -1000 &&
+              t - input.zmieniono < 15000 &&
+              input.zmieniono > (this.lastOperatorStopTime || 0) &&
+              t - (this.lastStateAt || 0) < 1500;
+            this.engine.configure(input, false);
+            const error = !fresh
+              ? "Przeterminowane przełączenie trybu lub brak świeżego odczytu falownika"
+              : this.operatorStopping || this.stopNeeded || this.water.fault || this.water.stopNeeded
+                ? "Zatrzymywanie lub aktywna blokada"
+                : this.engine.takeOver({ ...s, ...this.lastState }, this.o.limit.cfg, t);
+            if (error) this.trip(error);
+            else {
+              this.o.limit.ustawCel(this.lastState.czestotliwoscZadana);
+              this.wasOn = true;
+            }
+          } else this.engine.configure(input, running);
+          this.configRead = true;
+          this.persist();
+          this.publish();
+        };
+        // Zmiana trybu nie może wejść pomiędzy obliczenie a zapis Hz bieżącej iteracji Modbus.
+        if (this.configRead && this.lastState?.pracuje === true && input?.wlaczony !== this.engine.cfg.wlaczony)
+          this.serial(apply).catch((e) => this.trip("Nieudane przełączenie: " + e.message));
+        else apply();
       },
       () => {
         this.engine.invalid = "Brak dostępu do ustawień";
@@ -168,6 +202,7 @@ class PressureRuntime {
   }
   async control(d, s, limit) {
     this.lastState = d;
+    this.lastStateAt = Date.now();
     if (this.operatorStopping) {
       this.engine.state = "zatrzymywanie";
       if (d.pracuje === false && Number.isFinite(d.czestotliwoscWyjsciowa) && d.czestotliwoscWyjsciowa <= 0.7) {
@@ -221,6 +256,7 @@ class PressureRuntime {
     const e = this.engine;
     const data = {
       wersja: 1,
+      przelaczanieWPracy: 1,
       aktualizacja: Date.now(),
       ustawieniaId: e.cfg.id,
       wlaczony: e.cfg.wlaczony,

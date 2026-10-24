@@ -407,14 +407,6 @@ export function renderControl(live = isLive()) {
 export function initControl() {
   buildGauge();
   syncFrequency(0);
-  for (const id of ["setpointHzMode", "setpointBarMode"])
-    $(id).addEventListener("change", () => {
-      const bar = $("setpointBarMode").checked;
-      $("frequencyControl").hidden = bar;
-      $("topPressureControl").hidden = !bar;
-      $("setFrequency").hidden = bar;
-      $("setPressureTarget").hidden = !bar;
-    });
   $("controlHzSlider").addEventListener("input", (e) => {
     controlDirty = true;
     syncFrequency(e.target.value, "slider");

@@ -11,39 +11,39 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon-192.png" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="styles.css?v=2.35" />
+    <link rel="stylesheet" href="styles.css?v=2.36" />
     <!-- Jedna wersja wszystkich modułów: nowy HTML nie może uruchomić starych skryptów z cache HTTP. -->
     <script type="importmap">
       {
         "imports": {
-          "./config.js": "./config.js?v=2.35",
-          "./js/main.js": "./js/main.js?v=2.35",
-          "./js/state.js": "./js/state.js?v=2.35",
-          "./js/logic.js": "./js/logic.js?v=2.35",
-          "./js/control.js": "./js/control.js?v=2.35",
-          "./js/pressureControl.js": "./js/pressureControl.js?v=2.35",
-          "./js/waterSafety.js": "./js/waterSafety.js?v=2.35",
-          "./js/overview.js": "./js/overview.js?v=2.35",
-          "./js/overviewLayout.js": "./js/overviewLayout.js?v=2.35",
-          "./js/sensors.js": "./js/sensors.js?v=2.35",
-          "./js/stats.js": "./js/stats.js?v=2.35",
-          "./js/history.js": "./js/history.js?v=2.35",
-          "./js/paramChart.js": "./js/paramChart.js?v=2.35",
-          "./js/valveTable.js": "./js/valveTable.js?v=2.35",
-          "./js/notes.js": "./js/notes.js?v=2.35",
-          "./js/heartbeat.js": "./js/heartbeat.js?v=2.35",
-          "./js/alarms.js": "./js/alarms.js?v=2.35",
-          "./js/alarmSettings.js": "./js/alarmSettings.js?v=2.35",
-          "./js/push.js": "./js/push.js?v=2.35",
-          "./raspberry/psychrometrics.js": "./raspberry/psychrometrics.js?v=2.35",
-          "./raspberry/water-safety-schema.js": "./raspberry/water-safety-schema.js?v=2.35",
-          "./raspberry/pressure-control-schema.js": "./raspberry/pressure-control-schema.js?v=2.35",
-          "./raspberry/alarm-schema.js": "./raspberry/alarm-schema.js?v=2.35"
+          "./config.js": "./config.js?v=2.36",
+          "./js/main.js": "./js/main.js?v=2.36",
+          "./js/state.js": "./js/state.js?v=2.36",
+          "./js/logic.js": "./js/logic.js?v=2.36",
+          "./js/control.js": "./js/control.js?v=2.36",
+          "./js/pressureControl.js": "./js/pressureControl.js?v=2.36",
+          "./js/waterSafety.js": "./js/waterSafety.js?v=2.36",
+          "./js/overview.js": "./js/overview.js?v=2.36",
+          "./js/overviewLayout.js": "./js/overviewLayout.js?v=2.36",
+          "./js/sensors.js": "./js/sensors.js?v=2.36",
+          "./js/stats.js": "./js/stats.js?v=2.36",
+          "./js/history.js": "./js/history.js?v=2.36",
+          "./js/paramChart.js": "./js/paramChart.js?v=2.36",
+          "./js/valveTable.js": "./js/valveTable.js?v=2.36",
+          "./js/notes.js": "./js/notes.js?v=2.36",
+          "./js/heartbeat.js": "./js/heartbeat.js?v=2.36",
+          "./js/alarms.js": "./js/alarms.js?v=2.36",
+          "./js/alarmSettings.js": "./js/alarmSettings.js?v=2.36",
+          "./js/push.js": "./js/push.js?v=2.36",
+          "./raspberry/psychrometrics.js": "./raspberry/psychrometrics.js?v=2.36",
+          "./raspberry/water-safety-schema.js": "./raspberry/water-safety-schema.js?v=2.36",
+          "./raspberry/pressure-control-schema.js": "./raspberry/pressure-control-schema.js?v=2.36",
+          "./raspberry/alarm-schema.js": "./raspberry/alarm-schema.js?v=2.36"
         }
       }
     </script>
-    <link rel="modulepreload" href="js/logic.js?v=2.35" />
-    <script type="module" src="js/main.js?v=2.35"></script>
+    <link rel="modulepreload" href="js/logic.js?v=2.36" />
+    <script type="module" src="js/main.js?v=2.36"></script>
   </head>
   <body>
     <main class="wrap">
@@ -198,7 +198,9 @@
               <small>Poziom wody</small><b id="summaryWater">— cm</b><span id="summaryWaterDetail">— % poziomu</span>
             </article>
             <article class="card summary-tile">
-              <small>Moc falownika</small><b id="summaryPower">— kW</b><span id="summaryPowerDetail">Brak odczytu</span>
+              <small>Moc falownika · częstotliwość</small>
+              <div class="summary-meter-values"><b id="summaryPower">— kW</b><b id="summaryDriveHz">— Hz</b></div>
+              <span id="summaryPowerDetail">Brak odczytu</span>
             </article>
           </div>
           <h3 class="detail-heading">Szczegóły pomiarów</h3>
@@ -469,7 +471,7 @@
               Połączenie przez internet nie zastępuje sprzętowego E-STOP.
             </p>
             <fieldset class="setpoint-mode">
-              <legend>Co ustawia suwak?</legend>
+              <legend>Tryb sterowania · zmiana wymaga potwierdzenia</legend>
               <label
                 ><input type="radio" name="setpointMode" id="setpointHzMode" value="hz" checked /> Częstotliwość ·
                 Hz</label
@@ -530,8 +532,9 @@
                 />
                 <div class="frequency-scale"><span>5 bar</span><span>Ciśnienie</span><span>30 bar</span></div>
                 <p class="small">
-                  Wybór suwaka nie zmienia trybu pracy. Włącz automat w ustawieniach poniżej. „Ustaw ciśnienie” zmienia
-                  tylko cel aktywnego automatu, także podczas pracy; nie uruchamia pompy.
+                  Bar włącza automat, Hz przełącza na sterowanie ręczne — po potwierdzeniu. Podczas pracy regulator
+                  przejmuje bieżące Hz. Na postoju zmiana trybu nie uruchamia pompy. „Ustaw ciśnienie” zmienia cel
+                  aktywnego automatu.
                 </p>
                 <p id="topPressureMessage" class="small" role="status" aria-live="polite"></p>
               </div>
@@ -744,15 +747,15 @@
                 <details>
                   <summary>Zasady i zabezpieczenia automatu</summary>
                   <p class="small">
-                    Zapis nie uruchamia pompy. Nowy tryb włączaj na postoju; Start pozostaje ręczny, od minimalnych Hz.
-                    Odczyt co około 1 s, tolerancja celu ±0,3 bar, zmiana najwyżej 0,2 Hz na krok (nie częściej niż co 1
-                    s). Wymagany aktywny limit mocy do 90 kW, który ma pierwszeństwo. Brak lub błąd ciśnienia przez 3 s,
-                    przekroczenie progu STOP, błąd falownika albo brak narastania ciśnienia do 2 bar w 10 s powodują
-                    zatrzymanie i blokadę. Po blokadzie: wyłącz tryb, poczekaj na potwierdzony postój, usuń przyczynę i
-                    włącz ponownie. Bez automatycznego restartu. Wyłączenie trybu pozostawia bieżące Hz — dalsze
-                    sterowanie jest ręczne. Pierwszy rozruch wymaga próby pod nadzorem, porównania z manometrem i
-                    sprawnego niezależnego zabezpieczenia nadciśnieniowego. Raspberry i RS485 nie zastępują zabezpieczeń
-                    sprzętowych.
+                    Zapis nie uruchamia pompy. Przełącznik bar/Hz pozwala zmienić tryb podczas pracy po potwierdzeniu;
+                    granice Hz zmieniaj na postoju. Start pozostaje ręczny, od minimalnych Hz. Odczyt co około 1 s,
+                    tolerancja celu ±0,3 bar, zmiana najwyżej 0,2 Hz na krok (nie częściej niż co 1 s). Wymagany aktywny
+                    limit mocy do 90 kW, który ma pierwszeństwo. Brak lub błąd ciśnienia przez 3 s, przekroczenie progu
+                    STOP, błąd falownika albo brak narastania ciśnienia do 2 bar w 10 s powodują zatrzymanie i blokadę.
+                    Po blokadzie: wyłącz tryb, poczekaj na potwierdzony postój, usuń przyczynę i włącz ponownie. Bez
+                    automatycznego restartu. Wyłączenie trybu pozostawia bieżące Hz — dalsze sterowanie jest ręczne.
+                    Pierwszy rozruch wymaga próby pod nadzorem, porównania z manometrem i sprawnego niezależnego
+                    zabezpieczenia nadciśnieniowego. Raspberry i RS485 nie zastępują zabezpieczeń sprzętowych.
                   </p>
                 </details>
               </div>

@@ -101,6 +101,18 @@ class PressureController {
     this.filtered = null;
     this.state = "rozruch";
   }
+  takeOver(s, l, t) {
+    const error = this.validateStart({ ...s, pracuje: false }, l, t);
+    if (error) return error;
+    if (s.pracuje !== true) return "Przejęcie wymaga potwierdzonej pracy pompy";
+    for (const hz of [s.czestotliwoscZadana, s.czestotliwoscWyjsciowa])
+      if (!finite(hz) || hz < this.cfg.minHz || hz > this.cfg.maxHz) return "Bieżące Hz poza zakresem automatu";
+    if (s.czestotliwoscWyjsciowa >= 5 && (!finite(s.moc) || s.moc <= 0)) return "Brak wiarygodnego pomiaru mocy";
+    this.started(t);
+    this.filtered = s.cisnienieTloczenia.bar;
+    this.state = "przejęcie bieżących Hz";
+    return null;
+  }
   stopped() {
     this.lowPressureSince = 0;
     this.armed = false;

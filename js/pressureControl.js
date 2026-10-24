@@ -86,6 +86,9 @@ export function renderPressureControl() {
   const b = S.pressureBackend,
     ready = pressureBackendReady(),
     on = pressureMode();
+  syncModeView();
+  for (const id of ["setpointHzMode", "setpointBarMode"])
+    $(id).disabled = !user() || !S.connected || S.denied || denied || busy || !ready;
   if (!targetDirty) syncTarget(S.pressureCfg?.bar ?? A.defaults().bar);
   $("setPressureTarget").disabled = !targetReady() || busy;
   if (manualRequestId && manualModeReady() && b?.ustawieniaId === manualRequestId) {
@@ -122,6 +125,90 @@ export function renderPressureControl() {
     S.status?.polaczony !== true;
   for (const id of ["pressureAutoOn", "pressureSetBar", "pressureMinHz", "pressureMaxHz", "pressureStopBar"])
     $(id).disabled = !user() || denied || busy;
+}
+function syncModeView() {
+  const on = pressureMode();
+  $("setpointBarMode").checked = on;
+  $("setpointHzMode").checked = !on;
+  $("frequencyControl").hidden = on;
+  $("topPressureControl").hidden = !on;
+  $("setFrequency").hidden = on;
+  $("setPressureTarget").hidden = !on;
+}
+async function changeMode(on) {
+  syncModeView();
+  if (busy || on === pressureMode()) return;
+  if (!on) {
+    await switchToManual();
+    syncModeView();
+    return;
+  }
+  const before = S.pressureCfg;
+  const base = before || A.defaults();
+  const c = { ...base, wlaczony: true, id: crypto.randomUUID(), zmieniono: now(), zmienil: user()?.email || "" };
+  const error = A.validate(c);
+  const allowed = () =>
+    !!user() &&
+    !S.denied &&
+    !denied &&
+    S.connected &&
+    isLive() &&
+    S.status?.polaczony === true &&
+    !S.status.awaria &&
+    pressureBackendReady() &&
+    !S.pressureBackend?.awaria;
+  const p = S.status?.cisnienieTloczenia,
+    l = S.limitCfg;
+  const blocked =
+    error ||
+    (!allowed()
+      ? "Brak świeżego, sprawnego falownika i potwierdzenia Raspberry."
+      : S.status.pracuje && S.pressureBackend.przelaczanieWPracy !== 1
+        ? "Zaktualizuj regulator Raspberry przed przełączaniem w pracy."
+        : !p?.polaczony ||
+            !isFresh(p.aktualizacja, now(), A.pressureAgeMs) ||
+            !Number.isFinite(p.bar) ||
+            p.bar < 0 ||
+            p.bar >= c.maxBar ||
+            !(p.napiecieV >= 0.5 && p.napiecieV <= 4.5) ||
+            Math.abs((p.napiecieV - 0.5) * 10 - p.bar) >= 0.15
+          ? "Wymagany poprawny, świeży pomiar ciśnienia poniżej progu STOP."
+          : !l?.wlaczony || l.kw < 10 || l.kw > 90 || l.minHz < 0 || l.minHz > c.minHz
+            ? "Wymagany limit mocy 10–90 kW, z minimum Hz nie wyższym od minimum regulatora."
+            : S.status.pracuje &&
+                [S.status.czestotliwoscZadana, S.status.czestotliwoscWyjsciowa].some(
+                  (hz) => !Number.isFinite(hz) || hz < c.minHz || hz > c.maxHz,
+                )
+              ? "Bieżące Hz muszą mieścić się w granicach regulatora."
+              : null);
+  if (blocked) {
+    $("manualModeMessage").textContent = blocked;
+    return;
+  }
+  if (
+    !confirm(
+      `Włączyć regulację ciśnienia na ${c.bar} bar (${c.minHz}–${c.maxHz} Hz, STOP ${c.maxBar} bar)? ${S.status.pracuje ? "Regulator przejmie bieżące Hz pracującej pompy i będzie je zmieniał stopniowo." : "Pompa pozostanie zatrzymana; uruchomisz ją osobnym przyciskiem Start."} Limit mocy i zabezpieczenie wody pozostają według swoich ustawień.`,
+    )
+  )
+    return;
+  if (!allowed() || S.pressureCfg?.id !== before?.id)
+    return void ($("manualModeMessage").textContent = "Stan lub ustawienia zmieniły się — nie przełączono trybu.");
+  busy = true;
+  renderPressureControl();
+  $("manualModeMessage").textContent = "Przełączanie na regulację ciśnienia — oczekiwanie na Raspberry.";
+  try {
+    const result = await fb.runTransaction(dbRef("pompa/ustawienia/regulatorCisnienia"), (current) =>
+      current?.id === before?.id && current?.wlaczony !== true ? { ...c, zmieniono: now() } : undefined,
+    );
+    if (!result.committed) throw new Error("conflict");
+    dirty = false;
+    fill();
+  } catch {
+    $("manualModeMessage").textContent = "Nie potwierdzono przełączenia. Sprawdź połączenie i stan regulatora.";
+  } finally {
+    busy = false;
+    renderPressureControl();
+  }
 }
 function targetReady() {
   const p = S.status?.cisnienieTloczenia;
@@ -304,6 +391,8 @@ async function save() {
 }
 export function initPressureControl() {
   fill();
+  $("setpointBarMode").addEventListener("change", () => changeMode(true));
+  $("setpointHzMode").addEventListener("change", () => changeMode(false));
   $("topPressureBar").addEventListener("input", () => {
     targetDirty = true;
     syncTarget(parseDecimal($("topPressureBar").value), "number");

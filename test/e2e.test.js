@@ -220,9 +220,86 @@ test("Suwak bar/Hz: wybór bez zapisu, zmiana celu podczas pracy zachowuje grani
   assert.equal(saved.maxBar, 32);
   assert.equal((await writes(page, "pompa/polecenie")).length, 0);
   assert.equal(await page.isEnabled("#setPressureTarget"), false); // oczekiwanie na nowy identyfikator Raspberry
-  await page.check("#setpointHzMode");
-  assert.equal(await page.isVisible("#controlHzSlider"), true);
-  assert.equal(await page.isEnabled("#setFrequency"), false); // sam przełącznik nie wyłącza automatu
+  await page.evaluate(() =>
+    globalThis.__fb.set(
+      "pompa/statusRegulatoraCisnienia/ustawieniaId",
+      globalThis.__fb.read("pompa/ustawienia/regulatorCisnienia").id,
+    ),
+  );
+  page.once("dialog", (d) => d.dismiss());
+  await page.click("#setpointHzMode");
+  assert.equal(await page.isVisible("#topPressureSlider"), true);
+  assert.equal(await page.isChecked("#setpointBarMode"), true); // anulowanie zachowuje automat
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("Przełącznik trybu: bar uzbraja przejęcie podczas pracy, Hz oddaje sterowanie, anulowanie nie zapisuje", async () => {
+  const t = Date.now(),
+    data = seedData(t);
+  data.pompa.ustawienia.limitMocy.minHz = 0;
+  data.pompa.ustawienia.regulatorCisnienia = {
+    wersja: 1,
+    id: "manual-mode",
+    wlaczony: false,
+    bar: 25,
+    minHz: 0,
+    maxHz: 50,
+    maxBar: 32,
+    zmieniono: t,
+    zmienil: "test",
+  };
+  data.pompa.statusRegulatoraCisnienia = {
+    wersja: 1,
+    ustawieniaId: "manual-mode",
+    wlaczony: false,
+    przelaczanieWPracy: 1,
+    aktualizacja: t,
+    awaria: "",
+  };
+  data.pompa.status.cisnienieTloczenia = { bar: 24, napiecieV: 2.9, polaczony: true, aktualizacja: t };
+  const { page, ctx, errors } = await open({ data, clock: true });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#controlTab");
+  assert.equal(await page.textContent("#summaryDriveHz"), "42 Hz");
+  page.once("dialog", (d) => d.dismiss());
+  await page.click("#setpointBarMode");
+  assert.equal(await page.isChecked("#setpointHzMode"), true);
+  assert.equal((await writes(page, "pompa/ustawienia/regulatorCisnienia")).length, 0);
+  page.once("dialog", (d) => d.accept());
+  await page.click("#setpointBarMode");
+  await page.waitForFunction(() => globalThis.__fb.read("pompa/ustawienia/regulatorCisnienia").wlaczony === true);
+  assert.equal(await page.isEnabled("#setFrequency"), false);
+  await page.evaluate(() => {
+    const c = globalThis.__fb.read("pompa/ustawienia/regulatorCisnienia");
+    globalThis.__fb.set("pompa/statusRegulatoraCisnienia", {
+      wersja: 1,
+      ustawieniaId: c.id,
+      wlaczony: true,
+      uzbrojony: true,
+      przelaczanieWPracy: 1,
+      aktualizacja: Date.now(),
+      awaria: "",
+    });
+  });
+  page.once("dialog", (d) => d.accept());
+  await page.click("#setpointHzMode");
+  await page.waitForFunction(() => globalThis.__fb.read("pompa/ustawienia/regulatorCisnienia").wlaczony === false);
+  await page.evaluate(() => {
+    const c = globalThis.__fb.read("pompa/ustawienia/regulatorCisnienia");
+    globalThis.__fb.set("pompa/statusRegulatoraCisnienia", {
+      wersja: 1,
+      ustawieniaId: c.id,
+      wlaczony: false,
+      przelaczanieWPracy: 1,
+      aktualizacja: Date.now(),
+      awaria: "",
+    });
+  });
+  assert.equal(await page.isChecked("#setpointHzMode"), true);
+  assert.equal(await page.isEnabled("#setFrequency"), true);
+  assert.equal(Number(await page.inputValue("#controlHz")), 42);
+  assert.equal((await writes(page, "pompa/polecenie")).length, 0);
   assert.deepEqual(errors, []);
   await ctx.close();
 });
