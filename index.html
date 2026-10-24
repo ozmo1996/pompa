@@ -11,39 +11,39 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon-192.png" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="styles.css?v=2.34" />
+    <link rel="stylesheet" href="styles.css?v=2.35" />
     <!-- Jedna wersja wszystkich modułów: nowy HTML nie może uruchomić starych skryptów z cache HTTP. -->
     <script type="importmap">
       {
         "imports": {
-          "./config.js": "./config.js?v=2.34",
-          "./js/main.js": "./js/main.js?v=2.34",
-          "./js/state.js": "./js/state.js?v=2.34",
-          "./js/logic.js": "./js/logic.js?v=2.34",
-          "./js/control.js": "./js/control.js?v=2.34",
-          "./js/pressureControl.js": "./js/pressureControl.js?v=2.34",
-          "./js/waterSafety.js": "./js/waterSafety.js?v=2.34",
-          "./js/overview.js": "./js/overview.js?v=2.34",
-          "./js/overviewLayout.js": "./js/overviewLayout.js?v=2.34",
-          "./js/sensors.js": "./js/sensors.js?v=2.34",
-          "./js/stats.js": "./js/stats.js?v=2.34",
-          "./js/history.js": "./js/history.js?v=2.34",
-          "./js/paramChart.js": "./js/paramChart.js?v=2.34",
-          "./js/valveTable.js": "./js/valveTable.js?v=2.34",
-          "./js/notes.js": "./js/notes.js?v=2.34",
-          "./js/heartbeat.js": "./js/heartbeat.js?v=2.34",
-          "./js/alarms.js": "./js/alarms.js?v=2.34",
-          "./js/alarmSettings.js": "./js/alarmSettings.js?v=2.34",
-          "./js/push.js": "./js/push.js?v=2.34",
-          "./raspberry/psychrometrics.js": "./raspberry/psychrometrics.js?v=2.34",
-          "./raspberry/water-safety-schema.js": "./raspberry/water-safety-schema.js?v=2.34",
-          "./raspberry/pressure-control-schema.js": "./raspberry/pressure-control-schema.js?v=2.34",
-          "./raspberry/alarm-schema.js": "./raspberry/alarm-schema.js?v=2.34"
+          "./config.js": "./config.js?v=2.35",
+          "./js/main.js": "./js/main.js?v=2.35",
+          "./js/state.js": "./js/state.js?v=2.35",
+          "./js/logic.js": "./js/logic.js?v=2.35",
+          "./js/control.js": "./js/control.js?v=2.35",
+          "./js/pressureControl.js": "./js/pressureControl.js?v=2.35",
+          "./js/waterSafety.js": "./js/waterSafety.js?v=2.35",
+          "./js/overview.js": "./js/overview.js?v=2.35",
+          "./js/overviewLayout.js": "./js/overviewLayout.js?v=2.35",
+          "./js/sensors.js": "./js/sensors.js?v=2.35",
+          "./js/stats.js": "./js/stats.js?v=2.35",
+          "./js/history.js": "./js/history.js?v=2.35",
+          "./js/paramChart.js": "./js/paramChart.js?v=2.35",
+          "./js/valveTable.js": "./js/valveTable.js?v=2.35",
+          "./js/notes.js": "./js/notes.js?v=2.35",
+          "./js/heartbeat.js": "./js/heartbeat.js?v=2.35",
+          "./js/alarms.js": "./js/alarms.js?v=2.35",
+          "./js/alarmSettings.js": "./js/alarmSettings.js?v=2.35",
+          "./js/push.js": "./js/push.js?v=2.35",
+          "./raspberry/psychrometrics.js": "./raspberry/psychrometrics.js?v=2.35",
+          "./raspberry/water-safety-schema.js": "./raspberry/water-safety-schema.js?v=2.35",
+          "./raspberry/pressure-control-schema.js": "./raspberry/pressure-control-schema.js?v=2.35",
+          "./raspberry/alarm-schema.js": "./raspberry/alarm-schema.js?v=2.35"
         }
       }
     </script>
-    <link rel="modulepreload" href="js/logic.js?v=2.34" />
-    <script type="module" src="js/main.js?v=2.34"></script>
+    <link rel="modulepreload" href="js/logic.js?v=2.35" />
+    <script type="module" src="js/main.js?v=2.35"></script>
   </head>
   <body>
     <main class="wrap">
@@ -211,6 +211,20 @@
               <small>Agregat · ND20</small>
               <div class="summary-meter-values"><b id="summaryMeterPower">— kW</b><b id="summaryMeterHz">— Hz</b></div>
               <span id="summaryMeterState">Brak aktualnego pomiaru ND20</span>
+            </article>
+            <article class="card summary-tile" data-param="tPow">
+              <small>Temperatura powietrza · stacja</small><b id="summaryWeatherTemp">— °C</b>
+              <span id="summaryWeatherState">Oczekiwanie na pogodę</span>
+            </article>
+            <article class="card summary-tile summary-text-tile">
+              <small>Zalecane zawory · 600 ECO</small><b id="summaryValves">Brak wskazówki</b>
+              <span id="summaryValvesBasis">Wymagany mokry termometr i ciśnienie wody</span>
+              <button id="summaryValvesTable" class="secondary summary-shortcut" type="button">Zobacz tabelę</button>
+            </article>
+            <article class="card summary-tile summary-text-tile" id="summaryAlarmCard">
+              <small>Ostatnia awaria / ostrzeżenie</small><b id="summaryLastAlarm">Oczekiwanie na alarmy</b>
+              <span id="summaryLastAlarmState">—</span>
+              <button id="summaryAlarmOpen" class="secondary summary-shortcut" type="button">Otwórz alarmy</button>
             </article>
           </div>
           <div class="grid sensor-grid">
@@ -454,8 +468,16 @@
               Zatrzymaj: łagodne hamowanie rampą falownika. STOP: żądanie odcięcia wyjścia MRS — silnik wybiega.
               Połączenie przez internet nie zastępuje sprzętowego E-STOP.
             </p>
+            <fieldset class="setpoint-mode">
+              <legend>Co ustawia suwak?</legend>
+              <label
+                ><input type="radio" name="setpointMode" id="setpointHzMode" value="hz" checked /> Częstotliwość ·
+                Hz</label
+              >
+              <label><input type="radio" name="setpointMode" id="setpointBarMode" value="bar" /> Ciśnienie · bar</label>
+            </fieldset>
             <div class="control-grid">
-              <div>
+              <div id="frequencyControl">
                 <label for="controlHz">Nastawa ręczna (Hz)</label>
                 <div class="frequency-head">
                   <input
@@ -481,10 +503,43 @@
                 <div class="frequency-scale"><span>0 Hz</span><span>25 Hz</span><span>50 Hz</span></div>
                 <p id="controlPreview" class="preview" aria-live="polite"></p>
               </div>
+              <div id="topPressureControl" hidden>
+                <label for="topPressureBar">Ciśnienie zadane (bar)</label>
+                <div class="frequency-head">
+                  <input
+                    id="topPressureBar"
+                    type="number"
+                    min="5"
+                    max="30"
+                    step="0.1"
+                    value="25"
+                    inputmode="decimal"
+                  /><output id="topPressureValue" class="frequency-value" for="topPressureBar topPressureSlider"
+                    >25 bar</output
+                  >
+                </div>
+                <input
+                  id="topPressureSlider"
+                  class="frequency-slider"
+                  type="range"
+                  min="5"
+                  max="30"
+                  step="0.1"
+                  value="25"
+                  aria-label="Ciśnienie zadane"
+                />
+                <div class="frequency-scale"><span>5 bar</span><span>Ciśnienie</span><span>30 bar</span></div>
+                <p class="small">
+                  Wybór suwaka nie zmienia trybu pracy. Włącz automat w ustawieniach poniżej. „Ustaw ciśnienie” zmienia
+                  tylko cel aktywnego automatu, także podczas pracy; nie uruchamia pompy.
+                </p>
+                <p id="topPressureMessage" class="small" role="status" aria-live="polite"></p>
+              </div>
               <div class="control-actions">
                 <button id="startPump" type="button">Start ręczny</button
                 ><button id="startPressurePump" type="button">Uruchom regulację ciśnienia</button>
                 <button id="setFrequency" type="button" class="secondary">Ustaw Hz</button>
+                <button id="setPressureTarget" type="button" class="secondary" hidden>Ustaw ciśnienie</button>
                 <button id="switchToManual" type="button" class="secondary" hidden>Przejdź na sterowanie ręczne</button>
               </div>
               <p id="manualModeMessage" class="small" role="status" aria-live="polite"></p>

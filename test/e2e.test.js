@@ -79,7 +79,7 @@ test("Układ podglądu: kolejność, zapis, reset i odporność na obcy zapis be
     page.locator(selector + " > article").evaluateAll((nodes) => nodes.map((n) => n.dataset.overviewTile));
   const initial = await order(".overview-summary");
   const details = await order(".sensor-grid");
-  assert.equal(initial.length, 6);
+  assert.equal(initial.length, 9);
   assert.equal(details.length, 6);
   await page.click("#editOverviewLayout");
   for (const width of [320, 390, 1024, 1440]) {
@@ -107,7 +107,7 @@ test("Układ podglądu: kolejność, zapis, reset i odporność na obcy zapis be
   await page.reload();
   await page.waitForSelector("#dashboard:not([hidden])");
   assert.equal((await order(".overview-summary"))[0], "summaryWater");
-  assert.equal(new Set(await order(".overview-summary")).size, 6);
+  assert.equal(new Set(await order(".overview-summary")).size, 9);
   assert.deepEqual(await order(".sensor-grid"), details);
   assert.equal((await writes(page, "pompa/polecenie")).length, 0);
   assert.deepEqual(errors, []);
@@ -128,6 +128,102 @@ test("Dwa zatrzymania: oba dostępne bez falownika, wysyłają odrębne tryby be
     assert.equal(all.at(-1).value.trybStop, mode);
     assert.equal("czestotliwosc" in all.at(-1).value, false);
   }
+  await ctx.close();
+});
+
+test("Nowe skróty: pogoda, zawory i najnowszy alarm bez mylenia historii z aktywną awarią", async () => {
+  const t = Date.now(),
+    data = seedData(t);
+  data.pompa.status.pogoda.temperatura = -8;
+  data.pompa.status.cisnienieTloczenia = { bar: 32, napiecieV: 3.7, polaczony: true, aktualizacja: t };
+  data.pompa.alarmy.info = { czas: t, poziom: "info", tytul: "Zwykła informacja" };
+  const { page, ctx, errors } = await open({ data, clock: true });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  assert.equal(await page.textContent("#summaryWeatherTemp"), "−8 °C".replace("−", "-"));
+  assert.equal(await page.textContent("#summaryValves"), await page.textContent("#valveResult"));
+  assert.match(await page.textContent("#summaryValves"), /Otwórz/);
+  assert.equal(await page.textContent("#summaryLastAlarm"), "Awaria falownika");
+  await page.evaluate(() =>
+    globalThis.__fb.set("pompa/alarmy/new", {
+      czas: Date.now(),
+      poziom: "ostrzezenie",
+      tytul: "Nowe ostrzeżenie",
+      aktywny: false,
+      zakonczono: Date.now(),
+    }),
+  );
+  assert.equal(await page.textContent("#summaryLastAlarm"), "Nowe ostrzeżenie");
+  assert.match(await page.textContent("#summaryLastAlarmState"), /historyczne/);
+  assert.equal(
+    await page
+      .locator("#summaryLastAlarm")
+      .getAttribute("class")
+      .then((x) => x.includes("status-danger")),
+    false,
+  );
+  await page.click("#summaryValvesTable");
+  assert.equal(await page.isVisible("#valveTableDlg"), true);
+  await page.click("#closeValveTable");
+  await page.evaluate(() => globalThis.__fb.set("pompa/status/pogoda/pobrano", Date.now() - 60 * 60000));
+  assert.equal(await page.textContent("#summaryWeatherTemp"), "— °C");
+  assert.equal(await page.textContent("#summaryValves"), "Brak wskazówki");
+  await page.click("#summaryAlarmOpen");
+  assert.equal(await page.isVisible("#alarmsView"), true);
+  assert.match(await page.textContent("#alarmList"), /Nowe ostrzeżenie/);
+  assert.equal((await writes(page, "pompa/polecenie")).length, 0);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("Suwak bar/Hz: wybór bez zapisu, zmiana celu podczas pracy zachowuje granice i nie wysyła START", async () => {
+  const t = Date.now(),
+    data = seedData(t);
+  data.pompa.ustawienia.regulatorCisnienia = {
+    wersja: 1,
+    id: "target-test",
+    wlaczony: true,
+    bar: 25,
+    minHz: 0,
+    maxHz: 50,
+    maxBar: 32,
+    zmieniono: t,
+    zmienil: "test",
+  };
+  data.pompa.statusRegulatoraCisnienia = {
+    wersja: 1,
+    ustawieniaId: "target-test",
+    wlaczony: true,
+    aktualizacja: t,
+    stan: "reguluje",
+    awaria: "",
+  };
+  data.pompa.status.cisnienieTloczenia = { bar: 24, napiecieV: 2.9, polaczony: true, aktualizacja: t };
+  const { page, ctx, errors } = await open({ data, clock: true });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#controlTab");
+  await page.check("#setpointBarMode");
+  assert.equal(await page.isVisible("#controlHzSlider"), false);
+  assert.equal(await page.isVisible("#topPressureSlider"), true);
+  assert.equal((await writes(page, "pompa/ustawienia/regulatorCisnienia")).length, 0);
+  await page.fill("#topPressureBar", "26");
+  assert.equal(Number(await page.inputValue("#topPressureSlider")), 26);
+  page.once("dialog", (d) => d.dismiss());
+  await page.click("#setPressureTarget");
+  assert.equal((await writes(page, "pompa/ustawienia/regulatorCisnienia")).length, 0);
+  page.once("dialog", (d) => d.accept());
+  await page.click("#setPressureTarget");
+  await page.waitForFunction(() => document.getElementById("topPressureMessage").textContent.includes("Zapisano"));
+  const saved = (await writes(page, "pompa/ustawienia/regulatorCisnienia")).at(-1).value;
+  assert.equal(saved.bar, 26);
+  assert.equal(saved.minHz, 0);
+  assert.equal(saved.maxHz, 50);
+  assert.equal(saved.maxBar, 32);
+  assert.equal((await writes(page, "pompa/polecenie")).length, 0);
+  assert.equal(await page.isEnabled("#setPressureTarget"), false); // oczekiwanie na nowy identyfikator Raspberry
+  await page.check("#setpointHzMode");
+  assert.equal(await page.isVisible("#controlHzSlider"), true);
+  assert.equal(await page.isEnabled("#setFrequency"), false); // sam przełącznik nie wyłącza automatu
+  assert.deepEqual(errors, []);
   await ctx.close();
 });
 
@@ -958,7 +1054,7 @@ test("ND20: nowy kafelek zachowuje pozycję poprzedniego skrótu regulacji ciśn
     .evaluateAll((nodes) => nodes.map((n) => n.dataset.overviewTile));
   assert.equal(tiles[0], "summaryMeterPower");
   assert.equal(tiles[1], "summaryWater");
-  assert.equal(new Set(tiles).size, 6);
+  assert.equal(new Set(tiles).size, 9);
   await page.click("#editOverviewLayout");
   assert.equal(
     await page

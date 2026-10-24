@@ -13,6 +13,9 @@ const definitions = [
       ["summaryPower", "Moc falownika"],
       ["summaryWaterTemp", "Temperatura wody"],
       ["summaryMeterPower", "Agregat — moc i częstotliwość ND20"],
+      ["summaryWeatherTemp", "Temperatura powietrza — stacja"],
+      ["summaryValves", "Zalecane zawory"],
+      ["summaryLastAlarm", "Ostatnia awaria / ostrzeżenie"],
     ],
   ],
   [

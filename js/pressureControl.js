@@ -5,7 +5,8 @@ const A = globalThis.POMPA_PRESSURE_CONTROL;
 let dirty = false,
   busy = false,
   denied = false,
-  manualRequestId = null;
+  manualRequestId = null,
+  targetDirty = false;
 export const pressureMode = () => S.pressureCfg?.wlaczony === true || S.pressureBackend?.wlaczony === true;
 export function pressureBackendReady() {
   const b = S.pressureBackend;
@@ -70,6 +71,7 @@ function fill() {
 }
 export function resetPressureControl() {
   dirty = false;
+  targetDirty = false;
   busy = false;
   denied = false;
   S.pressureCfg = null;
@@ -78,11 +80,14 @@ export function resetPressureControl() {
   fill();
   $("pressureControlMessage").textContent = "";
   $("manualModeMessage").textContent = "";
+  $("topPressureMessage").textContent = "";
 }
 export function renderPressureControl() {
   const b = S.pressureBackend,
     ready = pressureBackendReady(),
     on = pressureMode();
+  if (!targetDirty) syncTarget(S.pressureCfg?.bar ?? A.defaults().bar);
+  $("setPressureTarget").disabled = !targetReady() || busy;
   if (manualRequestId && manualModeReady() && b?.ustawieniaId === manualRequestId) {
     $("manualModeMessage").textContent =
       "Raspberry potwierdziło tryb ręczny. Pompa nie została zatrzymana; możesz teraz ustawiać Hz.";
@@ -117,6 +122,71 @@ export function renderPressureControl() {
     S.status?.polaczony !== true;
   for (const id of ["pressureAutoOn", "pressureSetBar", "pressureMinHz", "pressureMaxHz", "pressureStopBar"])
     $(id).disabled = !user() || denied || busy;
+}
+function targetReady() {
+  const p = S.status?.cisnienieTloczenia;
+  return (
+    !!user() &&
+    S.connected &&
+    !S.denied &&
+    !denied &&
+    isLive() &&
+    S.status?.polaczony === true &&
+    S.status.awaria !== true &&
+    S.pressureCfg?.wlaczony === true &&
+    S.pressureBackend?.wlaczony === true &&
+    pressureBackendReady() &&
+    !S.pressureBackend.awaria &&
+    p?.polaczony === true &&
+    isFresh(p.aktualizacja, now(), A.pressureAgeMs) &&
+    typeof p.napiecieV === "number" &&
+    p.napiecieV >= 0.5 &&
+    p.napiecieV <= 4.5 &&
+    Number.isFinite(p.bar) &&
+    p.bar >= 0 &&
+    p.bar < S.pressureCfg.maxBar
+  );
+}
+function syncTarget(value, source) {
+  if (!Number.isFinite(value)) return;
+  if (source !== "number") $("topPressureBar").value = value;
+  if (source !== "slider") $("topPressureSlider").value = value;
+  $("topPressureValue").textContent = fmt(value, " bar");
+}
+async function saveTarget() {
+  if (busy || !targetReady()) return;
+  const before = S.pressureCfg,
+    bar = parseDecimal($("topPressureBar").value);
+  const next = { ...before, bar, id: crypto.randomUUID(), zmieniono: now(), zmienil: user()?.email || "" };
+  const error = A.validate(next);
+  if (error) return void ($("topPressureMessage").textContent = error);
+  if (
+    !confirm(
+      `Zmienić cel automatu z ${before.bar} na ${bar} bar? Pompa nie zostanie uruchomiona. Podczas pracy regulator sam dobierze Hz; limit mocy i pozostałe ustawienia nie zmienią się.`,
+    )
+  )
+    return;
+  if (!targetReady() || before.id !== S.pressureCfg?.id || busy)
+    return void ($("topPressureMessage").textContent = "Stan lub ustawienia zmieniły się — nie zapisano celu.");
+  busy = true;
+  renderPressureControl();
+  try {
+    const result = await fb.runTransaction(dbRef("pompa/ustawienia/regulatorCisnienia"), (current) =>
+      current?.id === before.id && current.wlaczony === true
+        ? { ...current, bar, id: next.id, zmieniono: next.zmieniono, zmienil: next.zmienil }
+        : undefined,
+    );
+    if (!result.committed) throw new Error("conflict");
+    targetDirty = false;
+    $("topPressureMessage").textContent =
+      "Zapisano cel " + fmt(bar, " bar") + ". Poczekaj na potwierdzenie Raspberry. Nie wysłano START.";
+  } catch {
+    $("topPressureMessage").textContent =
+      "Nie potwierdzono zapisu. Sprawdź połączenie lub zmianę ustawień na innym urządzeniu.";
+  } finally {
+    busy = false;
+    renderPressureControl();
+  }
 }
 async function switchToManual() {
   if ($("switchToManual").disabled || !pressureMode()) return;
@@ -234,6 +304,15 @@ async function save() {
 }
 export function initPressureControl() {
   fill();
+  $("topPressureBar").addEventListener("input", () => {
+    targetDirty = true;
+    syncTarget(parseDecimal($("topPressureBar").value), "number");
+  });
+  $("topPressureSlider").addEventListener("input", () => {
+    targetDirty = true;
+    syncTarget(Number($("topPressureSlider").value), "slider");
+  });
+  $("setPressureTarget").addEventListener("click", saveTarget);
   for (const id of ["pressureAutoOn", "pressureSetBar", "pressureMinHz", "pressureMaxHz", "pressureStopBar"])
     $(id).addEventListener("input", () => {
       dirty = true;

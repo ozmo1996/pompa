@@ -22,6 +22,7 @@ const { progi: P } = CFG;
 let manualPressure = null;
 const MANUAL_PRESSURE_MS = 15 * 60000;
 export function initSensors() {
+  $("summaryValvesTable").addEventListener("click", () => $("showValveTable").click());
   $("manualPressureOverride").addEventListener("change", renderWeather);
   const head = el("tr", {}, el("th", { scope: "col", textContent: "Mokry °C / bar" }));
   head.append(...PRESSURES.map((p) => el("th", { scope: "col", textContent: String(p) })));
@@ -98,6 +99,14 @@ function renderValves(wb, fresh) {
     else cell.removeAttribute("aria-current");
   }
   $("valveResult").textContent = result ? "Otwórz: " + result.valves.join(" + ") : "Brak wskazówki";
+  $("summaryValves").textContent = $("valveResult").textContent;
+  $("summaryValvesBasis").textContent = !result
+    ? !fresh
+      ? "Brak aktualnej pogody"
+      : pressure === null
+        ? "Wpisz ciśnienie przy armacie"
+        : "Warunki poza tabelą lub brak poprawnych danych"
+    : `Mokry ${fmt(wb, " °C")} · ${fmt(pressure, " bar")} · ${useSensor ? "czujnik na tłoczeniu" : "pomiar ręczny"}. Zalecenie, nie stan zaworów.`;
   $("valveBasis").textContent = !fresh
     ? "Potrzebne aktualne dane pogodowe."
     : !isNum(wb)
@@ -268,6 +277,10 @@ function renderWeather() {
     fresh = S.connected && !S.denied && isFresh(t, now(), P.swiezoscPogodyMs),
     pressure = stationPressure(w),
     wb = wetBulb(w?.temperatura, w?.wilgotnosc, pressure);
+  $("summaryWeatherTemp").textContent = fmt(fresh ? w?.temperatura : null, " °C");
+  $("summaryWeatherState").textContent = fresh
+    ? (w?.stacja || CFG.pogoda.stacjaDomyslna) + " · " + new Date(t).toLocaleTimeString("pl-PL")
+    : "Brak aktualnego pomiaru stacji";
   $("weatherStation").textContent = w?.stacja || CFG.pogoda.stacjaDomyslna;
   $("weatherTime").textContent = isNum(t)
     ? "Pomiar: " + new Date(t).toLocaleString("pl-PL")

@@ -79,7 +79,14 @@ function onUser(u) {
   // wyczyść wszystko po poprzednim użytkowniku
   unsub.forEach((fn) => safe(fn));
   unsub = [];
-  Object.assign(S, { status: null, limitCfg: null, alarms: [], connected: false, denied: false });
+  Object.assign(S, {
+    status: null,
+    limitCfg: null,
+    alarms: [],
+    alarmsState: "loading",
+    connected: false,
+    denied: false,
+  });
   resetControl();
   resetPressureControl();
   resetWaterSafety();

@@ -18,6 +18,7 @@ export function setAlarms(snapshot) {
     if (v && typeof v === "object") list.push({ ...v, id: c.key });
   });
   S.alarms = list.reverse();
+  S.alarmsState = "ready";
   renderAlarms();
 }
 
@@ -80,6 +81,27 @@ export function renderAlarms() {
   const alarms = S.alarms,
     open = alarms.filter(needsReview),
     crit = alarms.filter((a) => a.aktywny === true && a.poziom === "awaria");
+  const latest = alarms
+    .filter((a) => ["awaria", "ostrzezenie"].includes(a.poziom) && isNum(a.czas) && a.czas > 0)
+    .sort((a, b) => b.czas - a.czas)[0];
+  const available = S.alarmsState === "ready",
+    active = available && latest?.aktywny === true;
+  $("summaryLastAlarm").textContent = !available
+    ? S.alarmsState === "denied"
+      ? "Brak dostępu do alarmów"
+      : "Oczekiwanie na alarmy"
+    : latest
+      ? String(latest.tytul || latest.typ || ALARM_LEVELS[latest.poziom])
+      : "Brak zapisanych awarii i ostrzeżeń";
+  $("summaryLastAlarmState").textContent = !available
+    ? "Otwórz alarmy, aby sprawdzić szczegóły"
+    : latest
+      ? `${ALARM_LEVELS[latest.poziom]} · ${active ? (S.connected ? "trwa" : "trwa według ostatniego zapisu") : "historyczne"} · ${tShort(latest.czas)}${!S.connected ? " · brak połączenia" : ""}`
+      : S.connected
+        ? "Brak takich wpisów w pobranej historii"
+        : "Brak połączenia — nie potwierdzono stanu";
+  $("summaryLastAlarm").classList.toggle("status-danger", active && latest.poziom === "awaria");
+  $("summaryLastAlarm").classList.toggle("status-warning", active && latest.poziom === "ostrzezenie");
   $("alarmBadge").hidden = !open.length;
   $("alarmBadge").textContent = open.length > 99 ? "99+" : String(open.length);
   $("alarmBadge").classList.toggle(
@@ -123,6 +145,9 @@ async function ackAlarms(ids) {
 }
 
 export function alarmsDenied() {
+  S.alarms = [];
+  S.alarmsState = "denied";
+  renderAlarms();
   $("alarmMessage").textContent = "Brak dostępu do alarmów — sprawdź reguły bazy (pompa/alarmy).";
 }
 
@@ -139,6 +164,10 @@ export function showToast(d) {
 }
 
 export function initAlarms() {
+  $("summaryAlarmOpen").addEventListener("click", () => {
+    showView("alarms");
+    document.querySelector('#alarmFilter [data-f="all"]').click();
+  });
   onShowView("alarms", renderAlarms);
   $("alarmBanner").addEventListener("click", () => showView("alarms"));
   $("toast").addEventListener("click", () => {
