@@ -1,6 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { estimatePump } from "../js/pumpEstimate.js";
+import { pumpedVolumeInPeriod } from "../js/logic.js";
+
+test("Statystyki wody: przyrost licznika w wybranym okresie, bez dodawania po resecie", () => {
+  const r = (czas, m3, id = 1) => ({ czas, przepompowaneM3: m3, licznikPrzeplywuOd: id });
+  assert.equal(pumpedVolumeInPeriod([]), null);
+  assert.equal(pumpedVolumeInPeriod([r(1, 5)]), null);
+  assert.equal(pumpedVolumeInPeriod([r(1, 5), { czas: 2 }, r(3, 8), r(4, 8)]).m3, 3);
+  assert.equal(pumpedVolumeInPeriod([r(1, 5), r(2, 8), r(3, 1, 3), r(4, 2, 3)]).m3, 4);
+  assert.equal(pumpedVolumeInPeriod([r(1, 8), r(2, 5)]), null);
+});
 
 test("Wydajność: krzywa mocy, prawa podobieństwa, ciśnienie i odmowa ekstrapolacji", () => {
   const t = Date.now(),

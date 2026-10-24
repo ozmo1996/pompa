@@ -16,6 +16,7 @@ const definitions = [
       ["summaryWeatherTemp", "Temperatura powietrza — stacja"],
       ["summaryValves", "Zalecane zawory"],
       ["summaryLastAlarm", "Ostatnia awaria / ostrzeżenie"],
+      ["summaryPumpedWater", "Szacowana ilość przepompowanej wody"],
     ],
   ],
   [

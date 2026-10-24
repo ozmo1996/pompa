@@ -7,6 +7,7 @@ function status(id, text, level) {
   node.className = "device-status status-" + level;
 }
 export function renderOverview() {
+  renderPumpedWater(S.status);
   const s = S.status,
     t = now(),
     live = isLive(),
@@ -68,4 +69,15 @@ export function renderOverview() {
   $("summaryMeterState").textContent = meter
     ? "Moc czynna 3 faz · częstotliwość agregatu"
     : "Brak aktualnego pomiaru ND20";
+}
+function renderPumpedWater(s) {
+  const f = s?.wydajnoscPompy;
+  const valid = Number.isFinite(f?.m3) && f.m3 >= 0 && f.probki > 0 && Number.isFinite(f.od);
+  $("summaryPumpedWater").textContent = valid ? "≈ " + fmt(f.m3, " m³", 2) : "— m³";
+  $("summaryPumpedWaterState").textContent = valid
+    ? "Od " +
+      new Date(f.od).toLocaleString("pl-PL") +
+      ". Ostatni pomiar: " +
+      new Date(f.ostatniPomiar).toLocaleString("pl-PL")
+    : "Oczekiwanie na pierwszą poprawną próbkę przepływu";
 }

@@ -74,7 +74,7 @@ class TelemetryHistory {
     const row = waterSample(status, now);
     if (row) this.save("woda", 300000, row, true);
   }
-  pressure(status, now) {
+  pressure(status, now, extra = {}) {
     const row = pressureSample(status, now);
     if (!row) {
       this.pressureRun = null;
@@ -82,6 +82,7 @@ class TelemetryHistory {
     }
     this.pressureRun ??= now;
     row.sesjaCisnienia = this.pressureRun;
+    Object.assign(row, extra);
     this.save("cisnienie", 10000, row, true);
   }
   async flush() {

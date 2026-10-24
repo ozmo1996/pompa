@@ -11,40 +11,41 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon-192.png" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="styles.css?v=2.37" />
+    <link rel="stylesheet" href="styles.css?v=2.38" />
     <!-- Jedna wersja wszystkich modułów: nowy HTML nie może uruchomić starych skryptów z cache HTTP. -->
     <script type="importmap">
       {
         "imports": {
-          "./config.js": "./config.js?v=2.37",
-          "./js/main.js": "./js/main.js?v=2.37",
-          "./js/state.js": "./js/state.js?v=2.37",
-          "./js/logic.js": "./js/logic.js?v=2.37",
-          "./js/control.js": "./js/control.js?v=2.37",
-          "./js/pressureControl.js": "./js/pressureControl.js?v=2.37",
-          "./js/waterSafety.js": "./js/waterSafety.js?v=2.37",
-          "./js/overview.js": "./js/overview.js?v=2.37",
-          "./js/overviewLayout.js": "./js/overviewLayout.js?v=2.37",
-          "./js/sensors.js": "./js/sensors.js?v=2.37",
-          "./js/pumpEstimate.js": "./js/pumpEstimate.js?v=2.37",
-          "./js/stats.js": "./js/stats.js?v=2.37",
-          "./js/history.js": "./js/history.js?v=2.37",
-          "./js/paramChart.js": "./js/paramChart.js?v=2.37",
-          "./js/valveTable.js": "./js/valveTable.js?v=2.37",
-          "./js/notes.js": "./js/notes.js?v=2.37",
-          "./js/heartbeat.js": "./js/heartbeat.js?v=2.37",
-          "./js/alarms.js": "./js/alarms.js?v=2.37",
-          "./js/alarmSettings.js": "./js/alarmSettings.js?v=2.37",
-          "./js/push.js": "./js/push.js?v=2.37",
-          "./raspberry/psychrometrics.js": "./raspberry/psychrometrics.js?v=2.37",
-          "./raspberry/water-safety-schema.js": "./raspberry/water-safety-schema.js?v=2.37",
-          "./raspberry/pressure-control-schema.js": "./raspberry/pressure-control-schema.js?v=2.37",
-          "./raspberry/alarm-schema.js": "./raspberry/alarm-schema.js?v=2.37"
+          "./config.js": "./config.js?v=2.38",
+          "./js/main.js": "./js/main.js?v=2.38",
+          "./js/state.js": "./js/state.js?v=2.38",
+          "./js/logic.js": "./js/logic.js?v=2.38",
+          "./js/control.js": "./js/control.js?v=2.38",
+          "./js/pressureControl.js": "./js/pressureControl.js?v=2.38",
+          "./js/waterSafety.js": "./js/waterSafety.js?v=2.38",
+          "./js/overview.js": "./js/overview.js?v=2.38",
+          "./js/overviewLayout.js": "./js/overviewLayout.js?v=2.38",
+          "./js/sensors.js": "./js/sensors.js?v=2.38",
+          "./js/pumpEstimate.js": "./js/pumpEstimate.js?v=2.38",
+          "./js/stats.js": "./js/stats.js?v=2.38",
+          "./js/history.js": "./js/history.js?v=2.38",
+          "./js/paramChart.js": "./js/paramChart.js?v=2.38",
+          "./js/valveTable.js": "./js/valveTable.js?v=2.38",
+          "./js/notes.js": "./js/notes.js?v=2.38",
+          "./js/heartbeat.js": "./js/heartbeat.js?v=2.38",
+          "./js/alarms.js": "./js/alarms.js?v=2.38",
+          "./js/alarmSettings.js": "./js/alarmSettings.js?v=2.38",
+          "./js/push.js": "./js/push.js?v=2.38",
+          "./raspberry/psychrometrics.js": "./raspberry/psychrometrics.js?v=2.38",
+          "./raspberry/pump-estimate.js": "./raspberry/pump-estimate.js?v=2.38",
+          "./raspberry/water-safety-schema.js": "./raspberry/water-safety-schema.js?v=2.38",
+          "./raspberry/pressure-control-schema.js": "./raspberry/pressure-control-schema.js?v=2.38",
+          "./raspberry/alarm-schema.js": "./raspberry/alarm-schema.js?v=2.38"
         }
       }
     </script>
-    <link rel="modulepreload" href="js/logic.js?v=2.37" />
-    <script type="module" src="js/main.js?v=2.37"></script>
+    <link rel="modulepreload" href="js/logic.js?v=2.38" />
+    <script type="module" src="js/main.js?v=2.38"></script>
   </head>
   <body>
     <main class="wrap">
@@ -204,6 +205,11 @@
               <span id="summaryPowerDetail">Brak odczytu</span>
             </article>
           </div>
+          <article class="card summary-tile">
+            <small>Przepompowana woda · szacunek</small><b id="summaryPumpedWater">— m³</b>
+            <span id="summaryPumpedWaterState">Oczekiwanie na próbki</span>
+            <span>Trwały licznik Raspberry · od instalacji · przerwy bez danych pomijane</span>
+          </article>
           <h3 class="detail-heading">Szczegóły pomiarów</h3>
           <div class="overview-secondary" aria-label="Temperatura i pogoda">
             <article class="card summary-tile" data-param="tWody">
@@ -278,6 +284,10 @@
                   Ustawienie zapisywane tylko na tym urządzeniu.
                 </p>
                 <p id="flowConfigMessage" class="small" role="status"></p>
+                <p class="small" id="flowHistoryBasis">
+                  Historia i licznik są liczone na Raspberry przy założeniu 0 bar na ssaniu. Powyższa korekta zmienia
+                  tylko kalkulator lokalny, nie historię i licznik.
+                </p>
               </details>
             </article>
             <article class="card">
@@ -845,6 +855,8 @@
           <select id="statsMetric">
             <option value="waterChart">Poziom wody · %</option>
             <option value="pressureChart">Ciśnienie tłoczenia · bar</option>
+            <option value="flowChart">Szacowana wydajność pompy · m³/h</option>
+            <option value="pumpedChart">Szacowana przepompowana woda · m³</option>
             <option value="pumpChart">Moc falownika · kW</option>
             <option value="pumpHzChart">Częstotliwość · Hz</option>
             <option value="pumpCurrentChart">Prąd falownika · A</option>
@@ -857,6 +869,19 @@
             </div>
           </article>
 
+          <article class="card chart" data-stats-chart="flowChart" hidden>
+            <h3>Szacowana wydajność pompy · m³/h</h3>
+            <canvas id="flowChart" role="img" aria-label="Historia szacowanej wydajności pompy"></canvas>
+            <p class="small">
+              Próbki co 10 s podczas pracy. Braki i zmiany sesji nie są łączone linią. To szacunek z charakterystyki,
+              nie pomiar przepływu.
+            </p>
+          </article>
+          <article class="card chart" data-stats-chart="pumpedChart" hidden>
+            <h3>Szacowany licznik przepompowanej wody · m³</h3>
+            <canvas id="pumpedChart" role="img" aria-label="Historia szacowanego licznika wody"></canvas>
+          </article>
+          <p class="notice" id="flowSummary"></p>
           <article class="card chart" data-stats-chart="pressureChart" hidden>
             <h2>Ciśnienie tłoczenia · bar</h2>
             <p class="small">Zapis co 10 s wyłącznie podczas pracy pompy. Przerwy i brak pomiaru nie są zerami.</p>
@@ -944,11 +969,13 @@
                     <th>V</th>
                     <th>kW</th>
                     <th>bar</th>
+                    <th>Szacunek m³/h</th>
+                    <th>Przepompowane ≈ m³</th>
                   </tr>
                 </thead>
                 <tbody id="historyRows">
                   <tr>
-                    <td colspan="11">Brak danych.</td>
+                    <td colspan="13">Brak danych.</td>
                   </tr>
                 </tbody>
               </table>

@@ -70,7 +70,9 @@ async function main() {
   );
   const { EnergyCounters } = require("./energy-counters");
   const energy = new EnergyCounters(history.db);
-  const energyRef = admin.database().ref(`${cfg.firebase.sciezka}/status/licznikiEnergii`);
+  const { FlowCounter } = require("./flow-counter");
+  const flow = new FlowCounter(history.db, cfg.wydajnosc?.cisnienieSsaniaBar ?? 0);
+  const energyRef = admin.database().ref(`${cfg.firebase.sciezka}/status`);
   let energySending = false,
     energyPublished = 0;
   let status = null;
@@ -84,7 +86,9 @@ async function main() {
   // Niezależnie od czasu odpowiedzi ND20 i wysyłki do chmury; nie zapisuje komend do falownika.
   setInterval(() => {
     try {
-      history.pressure(status, Date.now());
+      const time = Date.now();
+      flow.observe(status, time);
+      history.pressure(status, time, flow.row());
     } catch (error) {
       console.error("Historia ciśnienia:", error.message);
     }
@@ -94,7 +98,7 @@ async function main() {
         energySending = true;
         energyPublished = Date.now();
         energyRef
-          .set(energy.snapshot())
+          .update({ licznikiEnergii: energy.snapshot(), wydajnoscPompy: flow.snapshot() })
           .catch((e) => console.error("Energia: wysyłka", e.message))
           .finally(() => {
             energySending = false;

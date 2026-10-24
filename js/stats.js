@@ -1,5 +1,16 @@
 // Zakładka „Statystyki”: historia poziomu i pracy, cykle zbiornika, ostatnie próbki.
-import { CFG, chartSegments, cyclesFrom, duration, fmt, isNum, niceStep, waterVolumeM3, lowerBound } from "./logic.js";
+import {
+  CFG,
+  chartSegments,
+  cyclesFrom,
+  duration,
+  fmt,
+  isNum,
+  niceStep,
+  waterVolumeM3,
+  lowerBound,
+  pumpedVolumeInPeriod,
+} from "./logic.js";
 import { workHistory } from "./history.js";
 import { $, S, el, now, onShowView, user } from "./state.js";
 
@@ -19,6 +30,8 @@ function fillPeriod() {
 const charts = {
   waterChart: ["poziom", "#4cc9e8", "%", 100, 6 * 60000],
   pressureChart: ["cisnienieBar", "#4cc9e8", "bar", 40, 20000, "sesjaCisnienia"],
+  flowChart: ["wydajnoscM3h", "#4cc9e8", "m³/h", 60, 20000, "sesjaWydajnosci"],
+  pumpedChart: ["przepompowaneM3", "#d6f48a", "m³", 1, 20000, "licznikPrzeplywuOd"],
   pumpChart: ["moc", "#b99cf0", "kW", 10, 2 * 60000],
   pumpHzChart: ["hz", "#d6f48a", "Hz", 50, 2 * 60000],
   pumpCurrentChart: ["prad", "#f0c995", "A", 10, 2 * 60000],
@@ -170,6 +183,16 @@ const td = (text, className = "") => el("td", { textContent: text, className });
 const when = (t) => new Date(t).toLocaleString("pl-PL");
 
 export function renderStats() {
+  const volume = pumpedVolumeInPeriod(rows);
+  $("flowSummary").textContent = volume
+    ? "Szacowany przyrost licznika: ≈ " +
+      fmt(volume.m3, " m³", 2) +
+      " między " +
+      when(volume.from) +
+      " a " +
+      when(volume.to) +
+      ". Przerwy bez poprawnego szacunku są pominięte."
+    : "Brak co najmniej dwóch zapisów licznika w wybranym okresie. Starsza historia nie zawiera szacunków przepływu.";
   const pressures = rows.filter((x) => x.typ === "cisnienie" && x.pracuje === true && isNum(x.cisnienieBar));
   let pressureMin = Infinity,
     pressureMax = -Infinity,
@@ -251,9 +274,11 @@ export function renderStats() {
               td(fmt(x.napiecie, " V")),
               td(fmt(x.moc, " kW")),
               td(fmt(x.cisnienieBar, " bar")),
+              td(isNum(x.wydajnoscM3h) ? "≈ " + fmt(x.wydajnoscM3h, " m³/h") : "—"),
+              td(isNum(x.przepompowaneM3) ? "≈ " + fmt(x.przepompowaneM3, " m³", 2) : "—"),
             ),
           )
-      : [el("tr", {}, el("td", { colSpan: 11, textContent: "Brak danych." }))]),
+      : [el("tr", {}, el("td", { colSpan: 13, textContent: "Brak danych." }))]),
   );
   requestAnimationFrame(() => {
     if ($("statsView").hidden) return;

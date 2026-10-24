@@ -79,7 +79,7 @@ test("Układ podglądu: kolejność, zapis, reset i odporność na obcy zapis be
     page.locator(selector + " > article").evaluateAll((nodes) => nodes.map((n) => n.dataset.overviewTile));
   const initial = await order(".overview-summary");
   const details = await order(".sensor-grid");
-  assert.equal(initial.length, 9);
+  assert.equal(initial.length, 10);
   assert.equal(details.length, 8);
   await page.click("#editOverviewLayout");
   for (const width of [320, 390, 1024, 1440]) {
@@ -107,7 +107,7 @@ test("Układ podglądu: kolejność, zapis, reset i odporność na obcy zapis be
   await page.reload();
   await page.waitForSelector("#dashboard:not([hidden])");
   assert.equal((await order(".overview-summary"))[0], "summaryWater");
-  assert.equal(new Set(await order(".overview-summary")).size, 9);
+  assert.equal(new Set(await order(".overview-summary")).size, 10);
   assert.deepEqual(await order(".sensor-grid"), details);
   assert.equal((await writes(page, "pompa/polecenie")).length, 0);
   assert.deepEqual(errors, []);
@@ -141,6 +141,49 @@ test("Energia i przepływ: osobne wartości, ułamki kWh, brak starego zera i wy
   assert.match(await page.textContent("#energy"), /— kWh/);
   await page.evaluate(() => globalThis.__fb.set("pompa/status/cisnienieTloczenia/polaczony", false));
   assert.match(await page.textContent("#pumpFlow"), /— m³\/h/);
+  assert.equal((await writes(page, "pompa/polecenie")).length, 0);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("Historia wydajności: m³/h, przyrost m³ i kafelek licznika", async () => {
+  const t = Date.now(),
+    data = seedData(t);
+  data.pompa.status.wydajnoscPompy = { m3: 100.25, probki: 100, od: t - 86400000, ostatniPomiar: t };
+  data.pompa.historia = {
+    a: {
+      czas: t - 20000,
+      typ: "cisnienie",
+      pracuje: true,
+      wydajnoscM3h: 32,
+      przepompowaneM3: 100.15,
+      licznikPrzeplywuOd: t - 86400000,
+      sesjaWydajnosci: t - 30000,
+    },
+    b: {
+      czas: t - 10000,
+      typ: "cisnienie",
+      pracuje: true,
+      wydajnoscM3h: 34,
+      przepompowaneM3: 100.25,
+      licznikPrzeplywuOd: t - 86400000,
+      sesjaWydajnosci: t - 30000,
+    },
+  };
+  const { page, ctx, errors } = await open({ data });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  assert.match(await page.textContent("#summaryPumpedWater"), /100,25 m³/);
+  await page.click("#statsTab");
+  await page.waitForFunction(() => document.getElementById("flowSummary").textContent.includes("0,1 m³"));
+  await page.selectOption("#statsMetric", "flowChart");
+  assert.equal(await page.isVisible("#flowChart"), true);
+  await page.locator("#statsPointIndex").fill("0");
+  await page.locator("#statsPointIndex").dispatchEvent("input");
+  assert.match(await page.textContent("#statsPoint"), /32 m³\/h/);
+  await page.selectOption("#statsMetric", "pumpedChart");
+  assert.equal(await page.isVisible("#pumpedChart"), true);
+  await page.click("#historyDetails > summary");
+  assert.match(await page.textContent("#historyRows"), /34 m³\/h/);
   assert.equal((await writes(page, "pompa/polecenie")).length, 0);
   assert.deepEqual(errors, []);
   await ctx.close();
@@ -1163,7 +1206,7 @@ test("ND20: nowy kafelek zachowuje pozycję poprzedniego skrótu regulacji ciśn
     .evaluateAll((nodes) => nodes.map((n) => n.dataset.overviewTile));
   assert.equal(tiles[0], "summaryMeterPower");
   assert.equal(tiles[1], "summaryWater");
-  assert.equal(new Set(tiles).size, 9);
+  assert.equal(new Set(tiles).size, 10);
   await page.click("#editOverviewLayout");
   assert.equal(
     await page

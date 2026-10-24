@@ -4,6 +4,46 @@ const { decodeRegisters } = require("./nd20.js");
 const { TelemetryHistory, waterSample, pressureSample } = require("./telemetry-history.js");
 const { DatabaseSync } = require("node:sqlite");
 const { EnergyCounters } = require("./energy-counters.js");
+const { FlowCounter } = require("./flow-counter.js");
+
+test("Przepompowana woda: Q × czas, duplikaty, błędy, postój, przerwy i restart bez utraty sumy", () => {
+  const db = new DatabaseSync(":memory:");
+  let f = new FlowCounter(db),
+    t = 1000000;
+  const sample = (time, patch = {}) => ({
+    polaczony: true,
+    pracuje: true,
+    aktualizacja: time,
+    czestotliwoscWyjsciowa: 40,
+    moc: (58 * 0.8 ** 3) / 0.947,
+    cisnienieTloczenia: { polaczony: true, aktualizacja: time, bar: 354 * 0.8 ** 2 * 0.0980665 },
+    ...patch,
+  });
+  for (let i = 0; i <= 3600; i++) {
+    const time = t + i * 1000;
+    f.observe(sample(time), time);
+    f.observe(sample(time), time);
+  }
+  assert.ok(Math.abs(f.state.m3 - 32) < 1e-8);
+  assert.equal(f.state.probki, 3601);
+  assert.equal(f.row().wydajnoscM3h, 32);
+  const oldSession = f.session;
+  t += 3600000;
+  f.observe(sample(t + 1000, { pracuje: false }), t + 1000);
+  assert.equal(f.row().wydajnoscM3h, null);
+  f.observe(sample(t + 2000), t + 2000);
+  assert.ok(Math.abs(f.state.m3 - 32) < 1e-8);
+  assert.notEqual(f.session, oldSession);
+  f.observe(sample(t + 3000, { moc: null }), t + 3000);
+  assert.equal(f.row().wydajnoscM3h, null);
+  f = new FlowCounter(db);
+  f.observe(sample(t + 3600000), t + 3600000);
+  assert.ok(Math.abs(f.state.m3 - 32) < 1e-8);
+  f.observe(sample(t + 3620000), t + 3620000); // brak mostu przez długą przerwę
+  assert.ok(Math.abs(f.state.m3 - 32) < 1e-8);
+  assert.ok(f.state.przerwy >= 3);
+  db.close();
+});
 
 test("Energia: kW × godziny, osobne źródła, duplikaty, restart i przerwy bez fikcyjnych kWh", () => {
   const sqlite = new DatabaseSync(":memory:");
@@ -114,6 +154,7 @@ test("Historia: interwały 10 s / 1 min / 5 min i trwała kolejka po błędzie s
         cisnienieTloczenia: { polaczony: true, bar: 25, aktualizacja: t + dt },
       },
       t + dt,
+      { wydajnoscM3h: 32, przepompowaneM3: (dt / 3600000) * 32, licznikPrzeplywuOd: t, sesjaWydajnosci: t },
     );
   }
   h.pressure({ polaczony: true, pracuje: false }, t + 30000);
@@ -134,6 +175,10 @@ test("Historia: interwały 10 s / 1 min / 5 min i trwała kolejka po błędzie s
   fail = false;
   await restarted.flush();
   assert.equal(Object.keys(uploaded).length, 11);
+  const flowRows = Object.values(uploaded).filter((r) => r.typ === "cisnienie");
+  assert.equal(flowRows.length, 3);
+  assert.ok(flowRows.every((r) => r.wydajnoscM3h === 32 && r.licznikPrzeplywuOd === t));
+  assert.ok(Math.abs(flowRows.at(-1).przepompowaneM3 - (20000 / 3600000) * 32) < 1e-9);
   assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM outbox").get().n, 0);
   sqlite.close();
 });

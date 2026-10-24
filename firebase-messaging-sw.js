@@ -29,6 +29,7 @@ const SHELL = [
   "js/state.js",
   "js/sensors.js",
   "js/pumpEstimate.js",
+  "raspberry/pump-estimate.js",
   "js/control.js",
   "js/pressureControl.js",
   "js/waterSafety.js",

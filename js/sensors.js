@@ -354,6 +354,11 @@ export function renderSensors(live) {
   renderWeather();
 }
 function renderFlow() {
+  const basis = S.status?.wydajnoscPompy?.cisnienieSsaniaBar ?? 0;
+  $("flowHistoryBasis").textContent =
+    "Historia i licznik na Raspberry: " +
+    fmt(basis, " bar") +
+    " na ssaniu. Korekta powyżej zmienia tylko kalkulator lokalny, nie historię ani licznik.";
   const e =
     S.connected && !S.denied
       ? estimatePump(S.status, now(), inletBar)

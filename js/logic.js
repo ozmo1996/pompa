@@ -190,6 +190,21 @@ export function validHz(v) {
 }
 
 /** Cyfry licznika energii: 6 pozycji, wiodące zera oznaczone jako „lead”. */
+export function pumpedVolumeInPeriod(rows) {
+  const points = rows.filter((r) => isNum(r.przepompowaneM3) && r.przepompowaneM3 >= 0 && isNum(r.licznikPrzeplywuOd));
+  if (points.length < 2) return null;
+  let m3 = 0,
+    intervals = 0;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1],
+      b = points[i];
+    if (b.czas > a.czas && a.licznikPrzeplywuOd === b.licznikPrzeplywuOd && b.przepompowaneM3 >= a.przepompowaneM3) {
+      m3 += b.przepompowaneM3 - a.przepompowaneM3;
+      intervals++;
+    }
+  }
+  return intervals ? { m3, from: points[0].czas, to: points.at(-1).czas } : null;
+}
 export function energyDigits(e) {
   if (!isNum(e)) return [..."------"].map((d) => ({ d, lead: true }));
   const s = String(Math.max(0, Math.floor(e))).padStart(6, "0"),
