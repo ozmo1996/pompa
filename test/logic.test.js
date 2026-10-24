@@ -1,5 +1,42 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { estimatePump } from "../js/pumpEstimate.js";
+
+test("Wydajność: krzywa mocy, prawa podobieństwa, ciśnienie i odmowa ekstrapolacji", () => {
+  const t = Date.now(),
+    r = 0.8;
+  const s = {
+    polaczony: true,
+    pracuje: true,
+    aktualizacja: t,
+    czestotliwoscWyjsciowa: 40,
+    moc: (58 * r ** 3) / 0.947,
+    cisnienieTloczenia: { polaczony: true, aktualizacja: t, bar: 354 * r ** 2 * 0.0980665 },
+  };
+  const v = estimatePump(s, t);
+  assert.ok(Math.abs(v.q - 32) < 1e-8);
+  assert.equal(v.rpm, 2368);
+  for (const patch of [
+    { polaczony: false },
+    { aktualizacja: t - 20000 },
+    { moc: null },
+    { moc: 100 },
+    { pracuje: false },
+    { czestotliwoscWyjsciowa: 0 },
+  ])
+    assert.equal(estimatePump({ ...s, ...patch }, t).q, null);
+  assert.equal(estimatePump({ ...s, cisnienieTloczenia: { ...s.cisnienieTloczenia, bar: 35 } }, t).q, null);
+  assert.equal(
+    estimatePump({ ...s, cisnienieTloczenia: { ...s.cisnienieTloczenia, aktualizacja: t - 4000 } }, t).q,
+    null,
+  );
+  assert.ok(
+    Math.abs(
+      estimatePump({ ...s, cisnienieTloczenia: { ...s.cisnienieTloczenia, bar: s.cisnienieTloczenia.bar + 2 } }, t, 2)
+        .q - 32,
+    ) < 1e-8,
+  );
+});
 import {
   CFG,
   analyzeChange,

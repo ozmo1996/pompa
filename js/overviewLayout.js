@@ -29,6 +29,8 @@ const definitions = [
       ["nd20State", "Agregat — ND20"],
       ["weatherStation", "Pogoda"],
       ["valveResult", "Konfiguracja zaworów"],
+      ["energyCountersCard", "Energia pompy i agregatu"],
+      ["pumpFlowCard", "Szacowana wydajność pompy"],
     ],
   ],
 ];

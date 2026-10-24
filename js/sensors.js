@@ -17,11 +17,36 @@ import {
 } from "./logic.js";
 import { $, S, isLive, now, user, el } from "./state.js";
 import { valveRecommendation, PRESSURES, VALVES } from "./valveTable.js";
+import { estimatePump } from "./pumpEstimate.js";
 
 const { progi: P } = CFG;
 let manualPressure = null;
+let inletBar = 0;
 const MANUAL_PRESSURE_MS = 15 * 60000;
 export function initSensors() {
+  try {
+    const v = Number(localStorage.getItem("pompa.flow.inletBar"));
+    if (Number.isFinite(v) && v >= -1 && v <= 10) inletBar = v;
+  } catch {
+    /* ustawienie lokalne jest opcjonalne */
+  }
+  $("flowInletBar").value = inletBar;
+  $("flowConfig").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const v = parseDecimal($("flowInletBar").value);
+    if (!Number.isFinite(v) || v < -1 || v > 10) {
+      $("flowConfigMessage").textContent = "Wpisz ciśnienie na ssaniu od −1 do 10 bar.";
+      return;
+    }
+    inletBar = v;
+    try {
+      localStorage.setItem("pompa.flow.inletBar", String(v));
+    } catch {
+      /* działa do zamknięcia strony */
+    }
+    $("flowConfigMessage").textContent = "Przyjęto na tym urządzeniu; ustawienie nie steruje pompą.";
+    renderFlow();
+  });
   $("summaryValvesTable").addEventListener("click", () => $("showValveTable").click());
   $("manualPressureOverride").addEventListener("change", renderWeather);
   const head = el("tr", {}, el("th", { scope: "col", textContent: "Mokry °C / bar" }));
@@ -320,10 +345,22 @@ function renderWeather() {
 }
 
 export function renderSensors(live) {
+  renderFlow();
   renderHeader();
   renderDrive(live);
   renderND20();
   renderWater();
   renderPressure();
   renderWeather();
+}
+function renderFlow() {
+  const e =
+    S.connected && !S.denied
+      ? estimatePump(S.status, now(), inletBar)
+      : { q: null, reason: "Brak połączenia z danymi" };
+  $("pumpFlow").textContent = (e.q === null ? "—" : "≈ " + fmt(e.q, "", 0)) + " m³/h";
+  $("pumpFlowState").textContent = e.reason;
+  $("pumpFlowRpm").textContent = e.rpm
+    ? "Obroty szacowane: ≈ " + fmt(e.rpm, " obr./min", 0) + " (z Hz, nie pomiar obrotów)."
+    : "";
 }

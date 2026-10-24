@@ -11,39 +11,40 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon-192.png" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="styles.css?v=2.36" />
+    <link rel="stylesheet" href="styles.css?v=2.37" />
     <!-- Jedna wersja wszystkich modułów: nowy HTML nie może uruchomić starych skryptów z cache HTTP. -->
     <script type="importmap">
       {
         "imports": {
-          "./config.js": "./config.js?v=2.36",
-          "./js/main.js": "./js/main.js?v=2.36",
-          "./js/state.js": "./js/state.js?v=2.36",
-          "./js/logic.js": "./js/logic.js?v=2.36",
-          "./js/control.js": "./js/control.js?v=2.36",
-          "./js/pressureControl.js": "./js/pressureControl.js?v=2.36",
-          "./js/waterSafety.js": "./js/waterSafety.js?v=2.36",
-          "./js/overview.js": "./js/overview.js?v=2.36",
-          "./js/overviewLayout.js": "./js/overviewLayout.js?v=2.36",
-          "./js/sensors.js": "./js/sensors.js?v=2.36",
-          "./js/stats.js": "./js/stats.js?v=2.36",
-          "./js/history.js": "./js/history.js?v=2.36",
-          "./js/paramChart.js": "./js/paramChart.js?v=2.36",
-          "./js/valveTable.js": "./js/valveTable.js?v=2.36",
-          "./js/notes.js": "./js/notes.js?v=2.36",
-          "./js/heartbeat.js": "./js/heartbeat.js?v=2.36",
-          "./js/alarms.js": "./js/alarms.js?v=2.36",
-          "./js/alarmSettings.js": "./js/alarmSettings.js?v=2.36",
-          "./js/push.js": "./js/push.js?v=2.36",
-          "./raspberry/psychrometrics.js": "./raspberry/psychrometrics.js?v=2.36",
-          "./raspberry/water-safety-schema.js": "./raspberry/water-safety-schema.js?v=2.36",
-          "./raspberry/pressure-control-schema.js": "./raspberry/pressure-control-schema.js?v=2.36",
-          "./raspberry/alarm-schema.js": "./raspberry/alarm-schema.js?v=2.36"
+          "./config.js": "./config.js?v=2.37",
+          "./js/main.js": "./js/main.js?v=2.37",
+          "./js/state.js": "./js/state.js?v=2.37",
+          "./js/logic.js": "./js/logic.js?v=2.37",
+          "./js/control.js": "./js/control.js?v=2.37",
+          "./js/pressureControl.js": "./js/pressureControl.js?v=2.37",
+          "./js/waterSafety.js": "./js/waterSafety.js?v=2.37",
+          "./js/overview.js": "./js/overview.js?v=2.37",
+          "./js/overviewLayout.js": "./js/overviewLayout.js?v=2.37",
+          "./js/sensors.js": "./js/sensors.js?v=2.37",
+          "./js/pumpEstimate.js": "./js/pumpEstimate.js?v=2.37",
+          "./js/stats.js": "./js/stats.js?v=2.37",
+          "./js/history.js": "./js/history.js?v=2.37",
+          "./js/paramChart.js": "./js/paramChart.js?v=2.37",
+          "./js/valveTable.js": "./js/valveTable.js?v=2.37",
+          "./js/notes.js": "./js/notes.js?v=2.37",
+          "./js/heartbeat.js": "./js/heartbeat.js?v=2.37",
+          "./js/alarms.js": "./js/alarms.js?v=2.37",
+          "./js/alarmSettings.js": "./js/alarmSettings.js?v=2.37",
+          "./js/push.js": "./js/push.js?v=2.37",
+          "./raspberry/psychrometrics.js": "./raspberry/psychrometrics.js?v=2.37",
+          "./raspberry/water-safety-schema.js": "./raspberry/water-safety-schema.js?v=2.37",
+          "./raspberry/pressure-control-schema.js": "./raspberry/pressure-control-schema.js?v=2.37",
+          "./raspberry/alarm-schema.js": "./raspberry/alarm-schema.js?v=2.37"
         }
       }
     </script>
-    <link rel="modulepreload" href="js/logic.js?v=2.36" />
-    <script type="module" src="js/main.js?v=2.36"></script>
+    <link rel="modulepreload" href="js/logic.js?v=2.37" />
+    <script type="module" src="js/main.js?v=2.37"></script>
   </head>
   <body>
     <main class="wrap">
@@ -230,6 +231,55 @@
             </article>
           </div>
           <div class="grid sensor-grid">
+            <article class="card" id="energyCountersCard">
+              <p class="eyebrow">Energia · dwa niezależne liczniki</p>
+              <h2>Zużycie energii</h2>
+              <div class="weather-metrics">
+                <div class="weather-metric">
+                  <b id="overviewenergy">— kWh</b><small>Pompa · z mocy wyjściowej falownika</small>
+                </div>
+                <div class="weather-metric">
+                  <b id="overviewgeneratorEnergy">— kWh</b><small>Agregat · moc czynna ND20, trzy fazy</small>
+                </div>
+              </div>
+              <p class="small" id="overviewenergyState"></p>
+              <p class="small" id="overviewgeneratorEnergyState"></p>
+              <p class="small">
+                Liczniki programowe ≈ ∫P dt, zapisywane na Raspberry. Nie są odczytem sprzętowego rejestru kWh. Energia
+                agregatu obejmuje inne odbiorniki i straty falownika; nie dodawaj jej do energii pompy.
+              </p>
+            </article>
+            <article class="card" id="pumpFlowCard">
+              <p class="eyebrow">65 YSM 8 · przybliżona charakterystyka</p>
+              <h2>Szacowana wydajność pompy</h2>
+              <div class="weather-metric"><b id="pumpFlow">— m³/h</b><small>Szacunek, nie przepływomierz</small></div>
+              <p class="small" id="pumpFlowState"></p>
+              <p class="small" id="pumpFlowRpm"></p>
+              <details>
+                <summary>Założenia i ciśnienie na ssaniu</summary>
+                <p class="small">
+                  Krzywe Q–H i Q–P odczytane przybliżenie ze zdjęcia dla 50 Hz / 2960 obr./min. Punkt z tabliczki: 45
+                  m³/h, 320 m. Moc z falownika przeliczana na wał przez znamionową sprawność silnika 94,7%; w częściowym
+                  obciążeniu jest inna. Bez ekstrapolacji poza wykres. Ciśnienie służy do kontroli zgodności, nie
+                  zastępuje pomiaru przepływu. Brak potwierdzonej dokładności — skalibruj pomiarem przepływu. Nie używaj
+                  do zabezpieczeń.
+                </p>
+                <form id="flowConfig">
+                  <label for="flowInletBar">Ciśnienie na ssaniu (bar względem atmosfery)</label
+                  ><input id="flowInletBar" type="number" min="-1" max="10" step="0.01" value="0" /><button
+                    type="submit"
+                    class="secondary"
+                  >
+                    Zastosuj do szacunku
+                  </button>
+                </form>
+                <p class="small">
+                  Domyślnie założono 0 bar na ssaniu. Pominięto różnicę wysokości króćców i prędkości w przewodach.
+                  Ustawienie zapisywane tylko na tym urządzeniu.
+                </p>
+                <p id="flowConfigMessage" class="small" role="status"></p>
+              </details>
+            </article>
             <article class="card">
               <p class="eyebrow">Falownik</p>
               <h2>Parametry pracy</h2>
@@ -579,11 +629,12 @@
                   <div class="load-row load-scale"><small>0</small><small id="ratedNote">90 kW = 100%</small></div>
                 </div>
                 <div>
-                  <div class="odo-label">Licznik energii</div>
-                  <div class="odo" id="energy" aria-label="Licznik energii">
-                    <span class="lead">0</span><span class="lead">0</span><span class="lead">0</span
-                    ><span class="lead">0</span><span class="lead">0</span><span class="lead">0</span><em>kWh</em>
-                  </div>
+                  <div class="odo-label">Energia pompy · licznik programowy</div>
+                  <b class="energy-value" id="energy">— kWh</b>
+                  <p class="small" id="energyState"></p>
+                  <div class="odo-label">Energia agregatu · licznik programowy ND20</div>
+                  <b class="energy-value" id="generatorEnergy">— kWh</b>
+                  <p class="small" id="generatorEnergyState"></p>
                 </div>
               </div>
             </div>

@@ -68,6 +68,11 @@ async function main() {
     new Database("/home/pi/pompa/telemetry.db"),
     admin.database().ref(`${cfg.firebase.sciezka}/historia`),
   );
+  const { EnergyCounters } = require("./energy-counters");
+  const energy = new EnergyCounters(history.db);
+  const energyRef = admin.database().ref(`${cfg.firebase.sciezka}/status/licznikiEnergii`);
+  let energySending = false,
+    energyPublished = 0;
   let status = null;
   admin
     .database()
@@ -83,6 +88,21 @@ async function main() {
     } catch (error) {
       console.error("Historia ciśnienia:", error.message);
     }
+    try {
+      energy.sample("pompa", status?.polaczony === true ? status.moc : null, status?.aktualizacja);
+      if (!energySending && Date.now() - energyPublished >= 10000) {
+        energySending = true;
+        energyPublished = Date.now();
+        energyRef
+          .set(energy.snapshot())
+          .catch((e) => console.error("Energia: wysyłka", e.message))
+          .finally(() => {
+            energySending = false;
+          });
+      }
+    } catch (error) {
+      console.error("Energia:", error.message);
+    }
   }, 1000);
   for (;;) {
     const now = Date.now();
@@ -90,6 +110,7 @@ async function main() {
       if (!client.isOpen) await connect(client, meter);
       const response = await client.readHoldingRegisters(7000, 66);
       const data = decodeRegisters(response.data);
+      energy.sample("agregat", data.mocKw, Date.now());
       history.meter(data, Date.now());
       await ref.update({
         polaczony: true,
@@ -97,6 +118,7 @@ async function main() {
         aktualizacja: Date.now(),
       });
     } catch (error) {
+      energy.invalidate("agregat");
       console.error("ND20:", error.message);
       await ref.update({ polaczony: false, aktualizacja: null }).catch((e) => console.error("Firebase:", e.message));
       try {

@@ -7,7 +7,6 @@ import {
   clamp,
   currentSetpoint,
   driveStateText,
-  energyDigits,
   f1,
   fmt,
   isNum,
@@ -80,16 +79,22 @@ function buildGauge() {
   $("ratedNote").textContent = `${M.mocZnamionowaKw} kW = 100%`;
 }
 
-let lastEnergy = null;
 function renderEnergy() {
-  const e = S.status?.energia,
-    key = isNum(e) ? Math.floor(e) : null;
-  if (key === lastEnergy && $("energy").childElementCount) return; // bez przebudowy co 5 s
-  lastEnergy = key;
-  $("energy").replaceChildren(
-    ...energyDigits(e).map(({ d, lead }) => el("span", { textContent: d, className: lead ? "lead" : "" })),
-    el("em", { textContent: "kWh" }),
-  );
+  for (const [kind, id] of [
+    ["pompa", "energy"],
+    ["agregat", "generatorEnergy"],
+  ]) {
+    const e = S.status?.licznikiEnergii?.[kind];
+    const valid = Number.isFinite(e?.kwh) && e.kwh >= 0 && e.probki > 0 && Number.isFinite(e.od);
+    const text = valid ? "≈ " + fmt(e.kwh, " kWh", 2) : "— kWh";
+    const detail = valid
+      ? `Od ${new Date(e.od).toLocaleString("pl-PL")}. Ostatni pomiar: ${new Date(e.ostatniPomiar).toLocaleString("pl-PL")}. Przerwy nie są doliczane.`
+      : "Oczekiwanie na pierwszy poprawny pomiar. Historia sprzed instalacji licznika nie jest doliczana.";
+    $(id).textContent = text;
+    $(id + "State").textContent = detail;
+    $("overview" + id).textContent = text;
+    $("overview" + id + "State").textContent = detail;
+  }
 }
 
 function renderPower(live) {

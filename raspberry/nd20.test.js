@@ -3,6 +3,44 @@ const assert = require("node:assert/strict");
 const { decodeRegisters } = require("./nd20.js");
 const { TelemetryHistory, waterSample, pressureSample } = require("./telemetry-history.js");
 const { DatabaseSync } = require("node:sqlite");
+const { EnergyCounters } = require("./energy-counters.js");
+
+test("Energia: kW × godziny, osobne źródła, duplikaty, restart i przerwy bez fikcyjnych kWh", () => {
+  const sqlite = new DatabaseSync(":memory:");
+  let e = new EnergyCounters(sqlite);
+  const t = 1000000;
+  for (let i = 0; i <= 360; i++) {
+    const time = t + i * 10000;
+    e.sample("pompa", 36, time, time);
+    e.sample("agregat", 40, time, time);
+    e.sample("pompa", 36, time, time); // ponowna aktualizacja innego pola statusu
+  }
+  assert.ok(Math.abs(e.state.pompa.kwh - 36) < 1e-9);
+  assert.ok(Math.abs(e.state.agregat.kwh - 40) < 1e-9);
+  const end = t + 3600000;
+  e = new EnergyCounters(sqlite);
+  e.sample("pompa", 36, end + 3600000, end + 3600000); // nie dolicza godziny postoju procesu
+  assert.ok(Math.abs(e.state.pompa.kwh - 36) < 1e-9);
+  e.sample("pompa", null, end + 3601000, end + 3601000);
+  e.sample("pompa", 36, end + 3610000, end + 3610000); // pierwsza poprawna próbka po błędzie
+  assert.ok(Math.abs(e.state.pompa.kwh - 36) < 1e-9);
+  e.sample("pompa", 36, end + 3620000, end + 3620000);
+  assert.ok(Math.abs(e.state.pompa.kwh - 36.1) < 1e-9);
+  e.sample("pompa", 36, end + 4000000, end + 4000000); // długa przerwa
+  assert.ok(Math.abs(e.state.pompa.kwh - 36.1) < 1e-9);
+  const samples = e.state.pompa.probki;
+  for (const [kw, time, now] of [
+    [-1, end + 4010000, end + 4010000],
+    [NaN, end + 4010000, end + 4010000],
+    [36, end + 4010000, end + 5000000],
+    [36, end + 3000000, end + 4000000],
+  ])
+    e.sample("pompa", kw, time, now);
+  assert.equal(e.state.pompa.probki, samples);
+  assert.ok(e.state.pompa.przerwy >= 3);
+  assert.ok(Math.abs(e.state.agregat.kwh - 40) < 1e-9);
+  sqlite.close();
+});
 
 test("Ciśnienie: wyłącznie pracująca pompa i świeże prawidłowe pomiary, zero jest pomiarem", () => {
   const now = 1000000;

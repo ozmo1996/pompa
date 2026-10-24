@@ -80,7 +80,7 @@ test("Układ podglądu: kolejność, zapis, reset i odporność na obcy zapis be
   const initial = await order(".overview-summary");
   const details = await order(".sensor-grid");
   assert.equal(initial.length, 9);
-  assert.equal(details.length, 6);
+  assert.equal(details.length, 8);
   await page.click("#editOverviewLayout");
   for (const width of [320, 390, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
@@ -109,6 +109,38 @@ test("Układ podglądu: kolejność, zapis, reset i odporność na obcy zapis be
   assert.equal((await order(".overview-summary"))[0], "summaryWater");
   assert.equal(new Set(await order(".overview-summary")).size, 9);
   assert.deepEqual(await order(".sensor-grid"), details);
+  assert.equal((await writes(page, "pompa/polecenie")).length, 0);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("Energia i przepływ: osobne wartości, ułamki kWh, brak starego zera i wygaśnięcie pomiarów", async () => {
+  const t = Date.now(),
+    data = seedData(t),
+    r = 0.8;
+  Object.assign(data.pompa.status, {
+    aktualizacja: t,
+    czestotliwoscWyjsciowa: 40,
+    moc: (58 * r ** 3) / 0.947,
+    energia: 999999,
+    licznikiEnergii: {
+      pompa: { kwh: 0.12, probki: 3, od: t - 10000, ostatniPomiar: t },
+      agregat: { kwh: 10.25, probki: 5, od: t - 10000, ostatniPomiar: t },
+    },
+    cisnienieTloczenia: { polaczony: true, aktualizacja: t, bar: 354 * r ** 2 * 0.0980665 },
+  });
+  const { page, ctx, errors } = await open({ data, clock: true });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  assert.match(await page.textContent("#overviewenergy"), /0,12 kWh/);
+  assert.match(await page.textContent("#overviewgeneratorEnergy"), /10,25 kWh/);
+  assert.match(await page.textContent("#pumpFlow"), /32 m³\/h/);
+  await page.click("#controlTab");
+  assert.match(await page.textContent("#energy"), /0,12 kWh/);
+  assert.match(await page.textContent("#generatorEnergy"), /10,25 kWh/);
+  await page.evaluate(() => globalThis.__fb.set("pompa/status/licznikiEnergii", null));
+  assert.match(await page.textContent("#energy"), /— kWh/);
+  await page.evaluate(() => globalThis.__fb.set("pompa/status/cisnienieTloczenia/polaczony", false));
+  assert.match(await page.textContent("#pumpFlow"), /— m³\/h/);
   assert.equal((await writes(page, "pompa/polecenie")).length, 0);
   assert.deepEqual(errors, []);
   await ctx.close();

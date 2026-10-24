@@ -28,6 +28,7 @@ const SHELL = [
   "js/logic.js",
   "js/state.js",
   "js/sensors.js",
+  "js/pumpEstimate.js",
   "js/control.js",
   "js/pressureControl.js",
   "js/waterSafety.js",
