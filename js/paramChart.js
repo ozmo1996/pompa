@@ -524,7 +524,7 @@ function render() {
   $("pcNowNote").textContent =
     pc.end === null ? (isNum(displayedValue(first)) ? "teraz" : "") : "ostatnia próbka w okresie";
   const second = pc.series[1];
-  $("pcSecondNow").textContent = second ? second.P.n + ": " + fmt(displayedValue(second), second.P.u, second.P.d) : "";
+  $("pcSecondNow").textContent = second ? " · " + fmt(displayedValue(second), second.P.u, second.P.d) : "";
   for (const [id, value] of [
     ["pcMin", values.min],
     ["pcMax", values.max],

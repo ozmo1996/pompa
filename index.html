@@ -1194,16 +1194,18 @@
           </div>
           <button id="pcClose" type="button" class="secondary pc-close">Zamknij</button>
         </div>
-        <div class="pc-now"><span id="pcNow">—</span><small id="pcNowNote"></small></div>
-          <p id="pcSecondNow" class="small"></p>
+          <div class="pc-now"><span id="pcNow">—</span><small id="pcNowNote"></small><span id="pcSecondNow"></span></div>
+          <details id="pcPeriodControls">
+            <summary>Zmień okres, datę i liczbę godzin</summary>
           <form id="pcPeriodForm" class="pc-period">
             <label>Okres<select id="pcPreset"><option value="1">Ostatnia godzina</option><option value="6" selected>Ostatnie 6 godzin</option><option value="24">Ostatnie 24 godziny</option><option value="168">Ostatnie 7 dni</option><option value="720">Ostatnie 30 dni</option><option value="custom">Własny okres</option></select></label>
             <label>Początek okresu<input id="pcFrom" type="datetime-local" step="1" required /></label>
             <label>Liczba godzin<input id="pcHours" type="number" min="0.0166666667" max="720" step="any" value="6" required /></label>
             <button type="submit">Pokaż</button>
             <div class="pc-period-actions"><button id="pcPrevious" type="button" class="secondary">← Poprzedni</button><button id="pcNext" type="button" class="secondary">Następny →</button><button id="pcLive" type="button" class="secondary">Do teraz</button></div>
-            <p id="pcPeriodMessage" class="small" role="status" aria-live="polite"></p>
           </form>
+          </details>
+          <p id="pcPeriodMessage" class="small" role="status" aria-live="polite"></p>
           <div id="pcParameterField" hidden>
             <label for="pcParameter">Parametr wykresu</label>
             <select id="pcParameter"></select>

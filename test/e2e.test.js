@@ -129,6 +129,7 @@ test("Wykresy: dwie osie, własna data i godziny filtrują obie serie bez bież�
   await page.waitForSelector("#dashboard:not([hidden])");
   await page.locator('[data-overview-tile="summaryPower"]').click();
   assert.match(await page.textContent("#pcLegend"), /kW.*lewa oś.*Hz.*prawa oś/);
+  await page.locator("#pcPeriodControls summary").click();
   const input = (v) =>
     page.evaluate((v) => new Date(v - new Date(v).getTimezoneOffset() * 60000).toISOString().slice(0, 19), v);
   await page.fill("#pcFrom", await input(from));
