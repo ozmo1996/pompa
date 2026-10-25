@@ -1363,6 +1363,25 @@ dialog.pc::backdrop {
   font-size: 13px;
   color: var(--muted);
 }
+#pcParameterField {
+  margin: 16px 0;
+}
+#pcParameterField label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+#pcParameter {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #0a1c15;
+  color: #ecf4ed;
+  font: inherit;
+}
 .pc-stats b {
   color: #ecf4ed;
   font-weight: 600;
