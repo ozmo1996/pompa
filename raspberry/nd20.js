@@ -50,92 +50,124 @@ async function main() {
   const ModbusRTU = require("modbus-serial");
   const admin = require("firebase-admin");
   const cfg = JSON.parse(fs.readFileSync("/home/pi/pompa/config.json", "utf8"));
-  const meter = cfg.nd20;
-  if (!meter?.wlaczony) {
-    console.log("ND20 wyłączony w config.json; oczekiwanie na montaż i konfigurację miernika.");
-    return;
-  }
+  const meter = cfg.nd20 || {};
   const client = new ModbusRTU();
   client.setTimeout(900);
   admin.initializeApp({
     credential: admin.credential.cert(require(cfg.firebase.plikKlucza)),
     databaseURL: cfg.firebase.adresBazy,
   });
-  const ref = admin.database().ref(`${cfg.firebase.sciezka}/status/nd20`);
   const { TelemetryHistory } = require("./telemetry-history");
   const Database = require(meter.modulSqlite || "/home/pi/pompa-alarmy/node_modules/better-sqlite3");
   const history = new TelemetryHistory(
     new Database("/home/pi/pompa/telemetry.db"),
     admin.database().ref(`${cfg.firebase.sciezka}/historia`),
+    admin.database().ref(`${cfg.firebase.sciezka}/zdarzenia`),
   );
   const { EnergyCounters } = require("./energy-counters");
   const energy = new EnergyCounters(history.db);
   const { FlowCounter } = require("./flow-counter");
   const flow = new FlowCounter(history.db, cfg.wydajnosc?.cisnienieSsaniaBar ?? 0);
   const energyRef = admin.database().ref(`${cfg.firebase.sciezka}/status`);
-  let energySending = false,
-    energyPublished = 0;
+  const { CounterControl } = require("./counter-control");
+  const control = new CounterControl(history.db, energy, flow);
+  const { CloudSync } = require("./cloud-sync"),
+    local = require("./local-telemetry");
+  const { storageHealth } = require("./storage-health");
+  let meterStatus = { polaczony: false, aktualizacja: null };
+  let storage = null,
+    storageAt = 0;
+  const sync = new CloudSync(
+    energyRef,
+    history,
+    () => ({
+      nd20: meterStatus,
+      licznikiEnergii: energy.snapshot(),
+      wydajnoscPompy: flow.snapshot(),
+      sterowanieLicznikami: control.snapshot(),
+      archiwumPomiarow: storage,
+      lokalnyZapisPomiarow: {
+        wersja: 1,
+        aktualizacja: Date.now(),
+        zrodlo: "lokalne",
+        plikAktualny: !!status,
+        kolejka: history.db.prepare("SELECT COUNT(*) n FROM outbox").get().n,
+      },
+    }),
+    console.error,
+  );
   let status = null;
   admin
     .database()
-    .ref(`${cfg.firebase.sciezka}/status`)
-    .on("value", (s) => {
-      status = s.val();
-      if (status?.pracuje !== true || status?.polaczony !== true) history.pressureRun = null;
-    });
+    .ref(`${cfg.firebase.sciezka}/ustawienia/liczniki`)
+    .on(
+      "value",
+      (s) => {
+        try {
+          if (control.apply(s.val())) sync.tick();
+        } catch (e) {
+          console.error("Liczniki:", e.message);
+        }
+      },
+      (e) => console.error("Ustawienia liczników:", e.message),
+    );
   // Niezależnie od czasu odpowiedzi ND20 i wysyłki do chmury; nie zapisuje komend do falownika.
   setInterval(() => {
     try {
       const time = Date.now();
+      status = local.read(time);
+      const wasFlow = Number.isFinite(flow.current?.q);
       flow.observe(status, time);
       history.pressure(status, time, flow.row());
+      if (wasFlow && flow.current?.q === null)
+        history.save("wydajnosc-koniec", 0, { czas: time, typ: "wydajnosc", ...flow.row() }, true);
+      history.water(status, time);
+      if (time - storageAt >= 300000) {
+        storage = storageHealth();
+        storageAt = time;
+      }
     } catch (error) {
       console.error("Historia ciśnienia:", error.message);
     }
     try {
-      energy.sample("pompa", status?.polaczony === true ? status.moc : null, status?.aktualizacja);
-      if (!energySending && Date.now() - energyPublished >= 10000) {
-        energySending = true;
-        energyPublished = Date.now();
-        energyRef
-          .update({ licznikiEnergii: energy.snapshot(), wydajnoscPompy: flow.snapshot() })
-          .catch((e) => console.error("Energia: wysyłka", e.message))
-          .finally(() => {
-            energySending = false;
-          });
-      }
+      const time = Date.now(),
+        driveAge = time - status?.aktualizacjaFalownika;
+      energy.sample(
+        "pompa",
+        status?.polaczony === true && driveAge >= -1000 && driveAge < 3000 ? status.moc : null,
+        status?.aktualizacjaFalownika,
+        time,
+      );
     } catch (error) {
       console.error("Energia:", error.message);
     }
   }, 1000);
+  setInterval(() => sync.tick(), 5000);
   for (;;) {
-    const now = Date.now();
+    if (!meter.wlaczony) {
+      await delay(5000);
+      continue;
+    }
     try {
       if (!client.isOpen) await connect(client, meter);
       const response = await client.readHoldingRegisters(7000, 66);
       const data = decodeRegisters(response.data);
       energy.sample("agregat", data.mocKw, Date.now());
       history.meter(data, Date.now());
-      await ref.update({
+      meterStatus = {
         polaczony: true,
         ...data,
         aktualizacja: Date.now(),
-      });
+      };
     } catch (error) {
       energy.invalidate("agregat");
       console.error("ND20:", error.message);
-      await ref.update({ polaczony: false, aktualizacja: null }).catch((e) => console.error("Firebase:", e.message));
+      meterStatus = { polaczony: false, aktualizacja: null };
       try {
         client.close(() => {});
       } catch {
         /* port mógł nie zostać otwarty */
       }
-    }
-    try {
-      history.water(status, now);
-      await history.flush();
-    } catch (error) {
-      console.error("Historia telemetrii:", error.message);
     }
     await delay(meter.interwalMs || 5000);
   }

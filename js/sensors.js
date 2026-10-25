@@ -21,32 +21,8 @@ import { estimatePump } from "./pumpEstimate.js";
 
 const { progi: P } = CFG;
 let manualPressure = null;
-let inletBar = 0;
 const MANUAL_PRESSURE_MS = 15 * 60000;
 export function initSensors() {
-  try {
-    const v = Number(localStorage.getItem("pompa.flow.inletBar"));
-    if (Number.isFinite(v) && v >= -1 && v <= 10) inletBar = v;
-  } catch {
-    /* ustawienie lokalne jest opcjonalne */
-  }
-  $("flowInletBar").value = inletBar;
-  $("flowConfig").addEventListener("submit", (event) => {
-    event.preventDefault();
-    const v = parseDecimal($("flowInletBar").value);
-    if (!Number.isFinite(v) || v < -1 || v > 10) {
-      $("flowConfigMessage").textContent = "Wpisz ciśnienie na ssaniu od −1 do 10 bar.";
-      return;
-    }
-    inletBar = v;
-    try {
-      localStorage.setItem("pompa.flow.inletBar", String(v));
-    } catch {
-      /* działa do zamknięcia strony */
-    }
-    $("flowConfigMessage").textContent = "Przyjęto na tym urządzeniu; ustawienie nie steruje pompą.";
-    renderFlow();
-  });
   $("summaryValvesTable").addEventListener("click", () => $("showValveTable").click());
   $("manualPressureOverride").addEventListener("change", renderWeather);
   const head = el("tr", {}, el("th", { scope: "col", textContent: "Mokry °C / bar" }));
@@ -354,11 +330,12 @@ export function renderSensors(live) {
   renderWeather();
 }
 function renderFlow() {
-  const basis = S.status?.wydajnoscPompy?.cisnienieSsaniaBar ?? 0;
+  const inletBar =
+    S.status?.sterowanieLicznikami?.cisnienieSsaniaBar ?? S.status?.wydajnoscPompy?.cisnienieSsaniaBar ?? 0;
   $("flowHistoryBasis").textContent =
     "Historia i licznik na Raspberry: " +
-    fmt(basis, " bar") +
-    " na ssaniu. Korekta powyżej zmienia tylko kalkulator lokalny, nie historię ani licznik.";
+    fmt(inletBar, " bar") +
+    " na ssaniu. Wspólne ustawienie zmienia dopiero potwierdzenie Raspberry. Stara historia zachowuje dawną konfigurację.";
   const e =
     S.connected && !S.denied
       ? estimatePump(S.status, now(), inletBar)

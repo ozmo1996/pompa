@@ -1,6 +1,7 @@
 // Zakładka „Sterowanie”: polecenia dla falownika, limit mocy i licznik mocy.
 import {
   CFG,
+  counterReading,
   activeLimit,
   analyzeChange,
   changePreview,
@@ -84,11 +85,10 @@ function renderEnergy() {
     ["pompa", "energy"],
     ["agregat", "generatorEnergy"],
   ]) {
-    const e = S.status?.licznikiEnergii?.[kind];
-    const valid = Number.isFinite(e?.kwh) && e.kwh >= 0 && e.probki > 0 && Number.isFinite(e.od);
-    const text = valid ? "≈ " + fmt(e.kwh, " kWh", 2) : "— kWh";
-    const detail = valid
-      ? `Od ${new Date(e.od).toLocaleString("pl-PL")}. Ostatni pomiar: ${new Date(e.ostatniPomiar).toLocaleString("pl-PL")}. Przerwy nie są doliczane.`
+    const e = counterReading(S.status, kind === "pompa" ? "pompaKwh" : "agregatKwh");
+    const text = e ? "≈ " + fmt(e.period, " kWh", 2) : "— kWh";
+    const detail = e
+      ? `Całkowity: ≈ ${fmt(e.total, " kWh", 2)}. Okres od ${new Date(e.since).toLocaleString("pl-PL")}. Ostatni pomiar: ${new Date(e.last).toLocaleString("pl-PL")}. Przerwy nie są doliczane.`
       : "Oczekiwanie na pierwszy poprawny pomiar. Historia sprzed instalacji licznika nie jest doliczana.";
     $(id).textContent = text;
     $(id + "State").textContent = detail;
@@ -99,7 +99,7 @@ function renderEnergy() {
 
 function renderPower(live) {
   const s = S.status,
-    p = s ? powerReading(s) : null,
+    p = live && s?.polaczony === true ? powerReading(s) : null,
     kw = p ? Math.max(0, p.kw) : null,
     over = kw !== null && kw > M.mocZnamionowaKw,
     load = kw === null ? null : (kw / M.mocZnamionowaKw) * 100;

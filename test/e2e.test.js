@@ -189,6 +189,97 @@ test("Historia wydajności: m³/h, przyrost m³ i kafelek licznika", async () =>
   await ctx.close();
 });
 
+test("Zerowanie wymaga dwóch potwierdzeń i ACK Raspberry, bez kasowania historii i bez poleceń pompy", async () => {
+  const t = Date.now(),
+    data = seedData(t);
+  data.pompa.status.wydajnoscPompy = {
+    m3: 100.25,
+    probki: 100,
+    od: t - 86400000,
+    ostatniPomiar: t,
+    cisnienieSsaniaBar: 0,
+  };
+  data.pompa.status.sterowanieLicznikami = { wersja: 1, aktualizacja: t, cisnienieSsaniaBar: 0, baselines: {} };
+  const { page, ctx, errors } = await open({ data });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#counterPanel > summary");
+  let mode = "cancel";
+  page.on("dialog", (d) =>
+    d.type() === "confirm"
+      ? mode === "cancel"
+        ? d.dismiss()
+        : d.accept()
+      : d.accept(mode === "wrong" ? "nie" : "ZERUJ"),
+  );
+  await page.click("#resetCounter");
+  assert.equal((await writes(page, "pompa/ustawienia/liczniki")).length, 0);
+  mode = "wrong";
+  await page.click("#resetCounter");
+  assert.equal((await writes(page, "pompa/ustawienia/liczniki")).length, 0);
+  mode = "ok";
+  await page.click("#resetCounter");
+  await page.waitForFunction(() => globalThis.__fb.writes.some((r) => r.path === "pompa/ustawienia/liczniki"));
+  const r = (await writes(page, "pompa/ustawienia/liczniki")).at(-1).value;
+  assert.equal(r.akcja, "zeruj");
+  assert.equal(r.licznik, "wodaM3");
+  assert.match(await page.textContent("#summaryPumpedWater"), /100,25 m³/);
+  await page.evaluate(
+    ({ id, t }) =>
+      globalThis.__fb.set("pompa/status/sterowanieLicznikami", {
+        wersja: 1,
+        aktualizacja: Date.now(),
+        cisnienieSsaniaBar: 0,
+        baselines: { wodaM3: { value: 100.25, origin: t - 86400000, at: t } },
+        ack: { id, wynik: "wykonano", opis: "Wyzerowano wskazanie okresowe. Historia pozostaje." },
+      }),
+    { id: r.id, t },
+  );
+  assert.match(await page.textContent("#summaryPumpedWater"), /≈ 0 m³/);
+  assert.match(await page.textContent("#summaryPumpedWaterState"), /Całkowity: ≈ 100,25 m³/);
+  assert.equal(await page.evaluate(() => globalThis.__fb.store.pompa.status.wydajnoscPompy.m3), 100.25);
+  assert.equal((await writes(page, "pompa/historia")).length, 0);
+  assert.equal((await writes(page, "pompa/polecenie")).length, 0);
+  await page.click("#pumpFlowCard details > summary");
+  await page.fill("#flowInletBar", "2");
+  await page.click("#saveFlowConfig");
+  await page.waitForFunction(
+    () => globalThis.__fb.writes.filter((r) => r.path === "pompa/ustawienia/liczniki").length === 2,
+  );
+  const config = (await writes(page, "pompa/ustawienia/liczniki")).at(-1).value;
+  assert.equal(config.akcja, "konfiguracja");
+  assert.equal(config.cisnienieSsaniaBar, 2);
+  await page.evaluate((id) => {
+    const old = globalThis.__fb.store.pompa.status.sterowanieLicznikami;
+    globalThis.__fb.set("pompa/status/sterowanieLicznikami", {
+      ...old,
+      aktualizacja: Date.now(),
+      cisnienieSsaniaBar: 2,
+      ack: { id, wynik: "wykonano", opis: "Raspberry przyjęło konfigurację" },
+    });
+  }, config.id);
+  assert.match(await page.textContent("#flowHistoryBasis"), /2 bar/);
+  assert.match(await page.textContent("#flowConfigMessage"), /Raspberry przyjęło/);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("Liczniki: brak uprawnień lub aktualnego Raspberry blokuje zerowanie", async () => {
+  const t = Date.now(),
+    data = seedData(t);
+  data.pompa.status.sterowanieLicznikami = { wersja: 1, aktualizacja: t, cisnienieSsaniaBar: 0, baselines: {} };
+  const { page, ctx } = await open({ data, seed: { failPaths: ["pompa/ustawienia/liczniki"] } });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  assert.equal(await page.isDisabled("#resetCounter"), true);
+  assert.match(await page.textContent("#localCollectionState"), /Brak uprawnień/);
+  assert.equal((await writes(page, "pompa/ustawienia/liczniki")).length, 0);
+  await ctx.close();
+  data.pompa.status.sterowanieLicznikami.aktualizacja = t - 60000;
+  const stale = await open({ data });
+  await stale.page.waitForSelector("#dashboard:not([hidden])");
+  assert.equal(await stale.page.isDisabled("#resetCounter"), true);
+  await stale.ctx.close();
+});
+
 test("Dwa zatrzymania: oba dostępne bez falownika, wysyłają odrębne tryby bez Hz", async () => {
   const { page, ctx } = await open({ data: seedData(Date.now(), { fresh: false }) });
   await page.waitForSelector("#dashboard:not([hidden])");

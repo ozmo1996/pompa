@@ -1,6 +1,7 @@
 // Start aplikacji: ładowanie Firebase, logowanie, subskrypcje bazy i odświeżanie widoków.
 import { CFG } from "./logic.js";
 import { renderOverview } from "./overview.js";
+import { initCounters, renderCounters, resetCounters } from "./counters.js";
 import { initOverviewLayout } from "./overviewLayout.js";
 import { initWaterSafety, resetWaterSafety, setWaterSafety } from "./waterSafety.js";
 import { $, S, VIEWS, dbRef, el, fb, isLive, safe, showView } from "./state.js";
@@ -45,6 +46,7 @@ function render() {
   const live = isLive();
   safe(renderSensors, live);
   safe(renderOverview);
+  safe(renderCounters);
   safe(renderControl, live);
 }
 
@@ -88,6 +90,7 @@ function onUser(u) {
     denied: false,
   });
   resetControl();
+  resetCounters();
   resetPressureControl();
   resetWaterSafety();
   resetHistory();
@@ -140,6 +143,19 @@ function onUser(u) {
     fillLimit();
     render();
   });
+  subscribe(
+    "pompa/ustawienia/liczniki",
+    (s) => {
+      S.counterRequest = s.val();
+      S.counterDenied = false;
+      render();
+    },
+    () => {
+      S.counterRequest = null;
+      S.counterDenied = true;
+      render();
+    },
+  );
   subscribe("pompa/ustawienia/pogoda/aktywnaDo", (s) => setWeatherActiveUntil(s.val()));
   subscribe(
     "pompa/ustawienia/regulatorCisnienia",
@@ -252,6 +268,7 @@ async function boot() {
   if ("serviceWorker" in navigator && isSecureContext) registerSW().catch(() => {});
   for (const v of VIEWS) $(v + "Tab").addEventListener("click", () => showView(v));
   initControl();
+  initCounters();
   initPressureControl();
   initWaterSafety();
   initSensors();

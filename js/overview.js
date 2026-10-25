@@ -1,5 +1,5 @@
 import { $, S, now, isLive } from "./state.js";
-import { CFG, fmt, isFresh, isNum, powerReading, driveStateText } from "./logic.js";
+import { CFG, fmt, isFresh, isNum, powerReading, driveStateText, counterReading } from "./logic.js";
 
 function status(id, text, level) {
   const node = $(id);
@@ -71,13 +71,14 @@ export function renderOverview() {
     : "Brak aktualnego pomiaru ND20";
 }
 function renderPumpedWater(s) {
-  const f = s?.wydajnoscPompy;
-  const valid = Number.isFinite(f?.m3) && f.m3 >= 0 && f.probki > 0 && Number.isFinite(f.od);
-  $("summaryPumpedWater").textContent = valid ? "≈ " + fmt(f.m3, " m³", 2) : "— m³";
-  $("summaryPumpedWaterState").textContent = valid
+  const f = counterReading(s, "wodaM3");
+  $("summaryPumpedWater").textContent = f ? "≈ " + fmt(f.period, " m³", 2) : "— m³";
+  $("summaryPumpedWaterState").textContent = f
     ? "Od " +
-      new Date(f.od).toLocaleString("pl-PL") +
+      new Date(f.since).toLocaleString("pl-PL") +
       ". Ostatni pomiar: " +
-      new Date(f.ostatniPomiar).toLocaleString("pl-PL")
+      new Date(f.last).toLocaleString("pl-PL") +
+      " · Całkowity: ≈ " +
+      fmt(f.total, " m³", 2)
     : "Oczekiwanie na pierwszą poprawną próbkę przepływu";
 }

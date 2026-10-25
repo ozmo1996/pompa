@@ -42,7 +42,7 @@ export class HistoryCache {
         rows = [];
       snap.forEach((ch) => {
         const v = ch.val();
-        if (v && isNum(v.czas)) rows.push(v);
+        if (v && isNum(v.czas)) rows.push({ ...v, _id: ch.key });
       });
       rows.sort((a, b) => a.czas - b.czas);
       return { rows, full: rows.length >= limit((to ?? t) - from) };
@@ -59,7 +59,7 @@ export class HistoryCache {
         rows = mergeRows(r.rows, rows);
         from = r.full && r.rows.length ? r.rows[0].czas : start;
       }
-      const r = await fetch(rows.length ? rows.at(-1).czas + 1 : from);
+      const r = await fetch(rows.length ? rows.at(-1).czas : from);
       rows = mergeRows(rows, r.rows);
     }
     if (gen !== this.gen) return; // w międzyczasie nastąpiło wylogowanie

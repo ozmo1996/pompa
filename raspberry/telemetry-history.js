@@ -25,22 +25,34 @@ function waterSample(s, now) {
     !finite(s.poziomWodyProc) ||
     !finite(s.aktualizacja) ||
     now - s.aktualizacja > 30000 ||
-    s.aktualizacja > now + 60000
+    s.aktualizacja > now + 1000 ||
+    !finite(s.aktualizacjaPoziomu) ||
+    now - s.aktualizacjaPoziomu < -1000 ||
+    now - s.aktualizacjaPoziomu > 15000
   )
     return null;
   return {
     czas: now,
     typ: "woda",
+    pomiarPoziomuCzas: s.aktualizacjaPoziomu,
     poziom: s.poziomWodyProc,
     mA: finite(s.poziomWodyMa) ? s.poziomWodyMa : null,
-    temperaturaWody: s.temperaturaWodyPolaczona && finite(s.temperaturaWody) ? s.temperaturaWody : null,
+    temperaturaWody:
+      s.temperaturaWodyPolaczona &&
+      finite(s.temperaturaWody) &&
+      finite(s.aktualizacjaTemperatury) &&
+      now - s.aktualizacjaTemperatury >= -1000 &&
+      now - s.aktualizacjaTemperatury < 15000
+        ? s.temperaturaWody
+        : null,
   };
 }
 
 class TelemetryHistory {
-  constructor(db, ref) {
+  constructor(db, ref, eventsRef = null) {
     this.db = db;
     this.ref = ref;
+    this.eventsRef = eventsRef;
     db.pragma("journal_mode = WAL");
     db.pragma("busy_timeout = 5000");
     db.exec(`CREATE TABLE IF NOT EXISTS telemetry (
@@ -88,7 +100,10 @@ class TelemetryHistory {
   async flush() {
     const rows = this.db.prepare("SELECT id, dane FROM outbox ORDER BY id LIMIT 100").all();
     if (!rows.length) return;
-    await this.ref.update(Object.fromEntries(rows.map((r) => [r.id, JSON.parse(r.dane)])));
+    const history = rows.filter((r) => !this.eventsRef || !r.id.startsWith("counter-"));
+    const events = rows.filter((r) => this.eventsRef && r.id.startsWith("counter-"));
+    if (history.length) await this.ref.update(Object.fromEntries(history.map((r) => [r.id, JSON.parse(r.dane)])));
+    if (events.length) await this.eventsRef.update(Object.fromEntries(events.map((r) => [r.id, JSON.parse(r.dane)])));
     this.db.transaction(() => {
       for (const r of rows) this.db.prepare("DELETE FROM outbox WHERE id = ?").run(r.id);
     })();

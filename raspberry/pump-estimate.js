@@ -23,6 +23,8 @@
   function estimatePump(s, time, inletBar = 0) {
     const no = (reason) => ({ q: null, reason });
     if (!s?.polaczony || !isFresh(s.aktualizacja, time, 15000)) return no("Brak świeżych danych falownika");
+    if (s.aktualizacjaFalownika !== undefined && !isFresh(s.aktualizacjaFalownika, time, 3000))
+      return no("Nieaktualny pomiar falownika");
     if (s.pracuje !== true) return no("Pompa nie ma potwierdzonej pracy — brak szacunku przepływu");
     const hz = s.czestotliwoscWyjsciowa,
       kw = s.moc,

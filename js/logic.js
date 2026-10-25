@@ -212,6 +212,20 @@ export function energyDigits(e) {
     sig = first < 0 ? s.length - 1 : first;
   return [...s].map((d, i) => ({ d, lead: i < sig }));
 }
+export function counterReading(status, kind) {
+  const c =
+    kind === "wodaM3" ? status?.wydajnoscPompy : status?.licznikiEnergii?.[kind === "pompaKwh" ? "pompa" : "agregat"];
+  const total = c?.[kind === "wodaM3" ? "m3" : "kwh"];
+  if (!isNum(total) || total < 0 || !(c?.probki > 0) || !isNum(c.od)) return null;
+  const b = status?.sterowanieLicznikami?.baselines?.[kind];
+  const valid =
+    b &&
+    isNum(b.value) &&
+    b.value >= 0 &&
+    b.value <= total &&
+    (b.origin === c.od || (b.origin === null && b.value === 0));
+  return { total, period: total - (valid ? b.value : 0), since: valid ? b.at : c.od, last: c.ostatniPomiar };
+}
 
 // ---------- historia ----------
 
@@ -266,19 +280,24 @@ export function chartSegments(rows, key, maxGapMs, sessionKey) {
   return segments;
 }
 
-/** Scala posortowane rekordy historii (po `czas`), bez duplikatów. */
+/** Tożsamością rekordu jest klucz Firebase, nie czas różnych czujników. */
 export function mergeRows(a, b) {
   if (!b.length) return a;
   if (!a.length) return b;
   const out = [];
+  const positions = new Map();
   let i = 0,
     j = 0;
   while (i < a.length || j < b.length) {
     const x = a[i],
       y = b[j];
     const next = y === undefined || (x !== undefined && x.czas <= y.czas) ? a[i++] : b[j++];
-    if (out.length && out.at(-1).czas === next.czas) out[out.length - 1] = next;
-    else out.push(next);
+    const key = next._id ?? String(next.czas) + ":" + (next.typ ?? "");
+    if (positions.has(key)) out[positions.get(key)] = next;
+    else {
+      positions.set(key, out.length);
+      out.push(next);
+    }
   }
   return out;
 }

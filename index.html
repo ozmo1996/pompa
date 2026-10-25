@@ -11,41 +11,42 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon-192.png" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="styles.css?v=2.38" />
+    <link rel="stylesheet" href="styles.css?v=2.39" />
     <!-- Jedna wersja wszystkich modułów: nowy HTML nie może uruchomić starych skryptów z cache HTTP. -->
     <script type="importmap">
       {
         "imports": {
-          "./config.js": "./config.js?v=2.38",
-          "./js/main.js": "./js/main.js?v=2.38",
-          "./js/state.js": "./js/state.js?v=2.38",
-          "./js/logic.js": "./js/logic.js?v=2.38",
-          "./js/control.js": "./js/control.js?v=2.38",
-          "./js/pressureControl.js": "./js/pressureControl.js?v=2.38",
-          "./js/waterSafety.js": "./js/waterSafety.js?v=2.38",
-          "./js/overview.js": "./js/overview.js?v=2.38",
-          "./js/overviewLayout.js": "./js/overviewLayout.js?v=2.38",
-          "./js/sensors.js": "./js/sensors.js?v=2.38",
-          "./js/pumpEstimate.js": "./js/pumpEstimate.js?v=2.38",
-          "./js/stats.js": "./js/stats.js?v=2.38",
-          "./js/history.js": "./js/history.js?v=2.38",
-          "./js/paramChart.js": "./js/paramChart.js?v=2.38",
-          "./js/valveTable.js": "./js/valveTable.js?v=2.38",
-          "./js/notes.js": "./js/notes.js?v=2.38",
-          "./js/heartbeat.js": "./js/heartbeat.js?v=2.38",
-          "./js/alarms.js": "./js/alarms.js?v=2.38",
-          "./js/alarmSettings.js": "./js/alarmSettings.js?v=2.38",
-          "./js/push.js": "./js/push.js?v=2.38",
-          "./raspberry/psychrometrics.js": "./raspberry/psychrometrics.js?v=2.38",
-          "./raspberry/pump-estimate.js": "./raspberry/pump-estimate.js?v=2.38",
-          "./raspberry/water-safety-schema.js": "./raspberry/water-safety-schema.js?v=2.38",
-          "./raspberry/pressure-control-schema.js": "./raspberry/pressure-control-schema.js?v=2.38",
-          "./raspberry/alarm-schema.js": "./raspberry/alarm-schema.js?v=2.38"
+          "./config.js": "./config.js?v=2.39",
+          "./js/main.js": "./js/main.js?v=2.39",
+          "./js/state.js": "./js/state.js?v=2.39",
+          "./js/logic.js": "./js/logic.js?v=2.39",
+          "./js/control.js": "./js/control.js?v=2.39",
+          "./js/counters.js": "./js/counters.js?v=2.39",
+          "./js/pressureControl.js": "./js/pressureControl.js?v=2.39",
+          "./js/waterSafety.js": "./js/waterSafety.js?v=2.39",
+          "./js/overview.js": "./js/overview.js?v=2.39",
+          "./js/overviewLayout.js": "./js/overviewLayout.js?v=2.39",
+          "./js/sensors.js": "./js/sensors.js?v=2.39",
+          "./js/pumpEstimate.js": "./js/pumpEstimate.js?v=2.39",
+          "./js/stats.js": "./js/stats.js?v=2.39",
+          "./js/history.js": "./js/history.js?v=2.39",
+          "./js/paramChart.js": "./js/paramChart.js?v=2.39",
+          "./js/valveTable.js": "./js/valveTable.js?v=2.39",
+          "./js/notes.js": "./js/notes.js?v=2.39",
+          "./js/heartbeat.js": "./js/heartbeat.js?v=2.39",
+          "./js/alarms.js": "./js/alarms.js?v=2.39",
+          "./js/alarmSettings.js": "./js/alarmSettings.js?v=2.39",
+          "./js/push.js": "./js/push.js?v=2.39",
+          "./raspberry/psychrometrics.js": "./raspberry/psychrometrics.js?v=2.39",
+          "./raspberry/pump-estimate.js": "./raspberry/pump-estimate.js?v=2.39",
+          "./raspberry/water-safety-schema.js": "./raspberry/water-safety-schema.js?v=2.39",
+          "./raspberry/pressure-control-schema.js": "./raspberry/pressure-control-schema.js?v=2.39",
+          "./raspberry/alarm-schema.js": "./raspberry/alarm-schema.js?v=2.39"
         }
       }
     </script>
-    <link rel="modulepreload" href="js/logic.js?v=2.38" />
-    <script type="module" src="js/main.js?v=2.38"></script>
+    <link rel="modulepreload" href="js/logic.js?v=2.39" />
+    <script type="module" src="js/main.js?v=2.39"></script>
   </head>
   <body>
     <main class="wrap">
@@ -240,6 +241,24 @@
             <article class="card" id="energyCountersCard">
               <p class="eyebrow">Energia · dwa niezależne liczniki</p>
               <h2>Zużycie energii</h2>
+              <details id="counterPanel">
+                <summary>Liczniki okresowe i zerowanie</summary>
+                <p class="small">
+                  Duże wskazania pokazują okres od ostatniego zerowania. Sumy całkowite i historia nie są zerowane ani
+                  kasowane. Wykresy m³ pokazują licznik całkowity.
+                </p>
+                <label for="counterResetKind">Który licznik okresowy wyzerować?</label>
+                <select id="counterResetKind">
+                  <option value="wodaM3">Przepompowana woda · m³</option>
+                  <option value="pompaKwh">Energia pompy · kWh</option>
+                  <option value="agregatKwh">Energia agregatu · kWh</option>
+                  <option value="wszystkie">Wszystkie trzy liczniki</option>
+                </select>
+                <button type="button" id="resetCounter" class="secondary" disabled>Wyzeruj wskazanie okresowe</button>
+                <p id="counterControlMessage" class="notice" role="status" aria-live="polite"></p>
+              </details>
+              <p id="localCollectionState" class="small" role="status"></p>
+              <p id="measurementStorage" class="notice" role="status"></p>
               <div class="weather-metrics">
                 <div class="weather-metric">
                   <b id="overviewenergy">— kWh</b><small>Pompa · z mocy wyjściowej falownika</small>
@@ -273,6 +292,8 @@
                 <form id="flowConfig">
                   <label for="flowInletBar">Ciśnienie na ssaniu (bar względem atmosfery)</label
                   ><input id="flowInletBar" type="number" min="-1" max="10" step="0.01" value="0" /><button
+                    id="saveFlowConfig"
+                    disabled
                     type="submit"
                     class="secondary"
                   >
@@ -281,12 +302,11 @@
                 </form>
                 <p class="small">
                   Domyślnie założono 0 bar na ssaniu. Pominięto różnicę wysokości króćców i prędkości w przewodach.
-                  Ustawienie zapisywane tylko na tym urządzeniu.
+                  Ustawienie wspólne dla Raspberry i wszystkich urządzeń; wymaga potwierdzenia.
                 </p>
                 <p id="flowConfigMessage" class="small" role="status"></p>
                 <p class="small" id="flowHistoryBasis">
-                  Historia i licznik są liczone na Raspberry przy założeniu 0 bar na ssaniu. Powyższa korekta zmienia
-                  tylko kalkulator lokalny, nie historię i licznik.
+                  Historia, licznik i bieżący szacunek używają wspólnej konfiguracji potwierdzonej przez Raspberry.
                 </p>
               </details>
             </article>
@@ -856,7 +876,7 @@
             <option value="waterChart">Poziom wody · %</option>
             <option value="pressureChart">Ciśnienie tłoczenia · bar</option>
             <option value="flowChart">Szacowana wydajność pompy · m³/h</option>
-            <option value="pumpedChart">Szacowana przepompowana woda · m³</option>
+            <option value="pumpedChart">Całkowita przepompowana woda · m³ (bez zerowania)</option>
             <option value="pumpChart">Moc falownika · kW</option>
             <option value="pumpHzChart">Częstotliwość · Hz</option>
             <option value="pumpCurrentChart">Prąd falownika · A</option>

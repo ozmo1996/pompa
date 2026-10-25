@@ -45,6 +45,7 @@ class FlowCounter {
       sesjaWydajnosci: this.current?.q === null ? null : this.session,
       metodaWydajnosci: METHOD,
       cisnienieSsaniaBar: this.inletBar,
+      konfiguracjaWydajnosciId: this.configId ?? "initial",
     };
   }
   snapshot() {

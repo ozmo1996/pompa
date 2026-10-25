@@ -1,7 +1,28 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { estimatePump } from "../js/pumpEstimate.js";
-import { pumpedVolumeInPeriod } from "../js/logic.js";
+import { pumpedVolumeInPeriod, counterReading, mergeRows as mergeHistoryRows } from "../js/logic.js";
+
+test("Historia: równe czasy różnych kluczy i typów nie gubią próbek", () => {
+  const rows = mergeHistoryRows(
+    [{ czas: 1, typ: "woda", _id: "a", poziom: 50 }],
+    [{ czas: 1, typ: "cisnienie", _id: "b", cisnienieBar: 25 }],
+  );
+  assert.equal(rows.length, 2);
+  assert.equal(mergeHistoryRows(rows, [{ czas: 1, typ: "woda", _id: "a", poziom: 51 }]).length, 2);
+  assert.equal(mergeHistoryRows(rows, [{ czas: 1, typ: "woda", _id: "a", poziom: 51 }])[0].poziom, 51);
+});
+test("Liczniki okresowe: całkowity bez zmian, osobne punkty odniesienia", () => {
+  const s = {
+    wydajnoscPompy: { m3: 100.5, probki: 5, od: 1, ostatniPomiar: 10 },
+    licznikiEnergii: { pompa: { kwh: 50, probki: 3, od: 2 } },
+    sterowanieLicznikami: { baselines: { wodaM3: { value: 100, origin: 1, at: 9 } } },
+  };
+  assert.equal(counterReading(s, "wodaM3").period, 0.5);
+  assert.equal(counterReading(s, "wodaM3").total, 100.5);
+  assert.equal(counterReading(s, "pompaKwh").period, 50);
+  assert.equal(counterReading({}, "wodaM3"), null);
+});
 
 test("Statystyki wody: przyrost licznika w wybranym okresie, bez dodawania po resecie", () => {
   const r = (czas, m3, id = 1) => ({ czas, przepompowaneM3: m3, licznikPrzeplywuOd: id });

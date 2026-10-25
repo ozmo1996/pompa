@@ -111,7 +111,13 @@ test("Ciśnienie: wyłącznie pracująca pompa i świeże prawidłowe pomiary, z
 });
 
 test("Historia: świeża woda na postoju, bez fikcyjnych pomiarów offline", () => {
-  const s = { sondaPolaczona: true, aktualizacja: 1000000, poziomWodyProc: 0, pracuje: false };
+  const s = {
+    sondaPolaczona: true,
+    aktualizacja: 1000000,
+    aktualizacjaPoziomu: 1000000,
+    poziomWodyProc: 0,
+    pracuje: false,
+  };
   assert.equal(waterSample(s, 1000000).poziom, 0);
   assert.equal(waterSample({ ...s, sondaPolaczona: false }, 1000000), null);
   assert.equal(waterSample(s, 1030001), null);
@@ -162,7 +168,7 @@ test("Historia: interwały 10 s / 1 min / 5 min i trwała kolejka po błędzie s
   assert.equal(h.pressureRun, null);
   for (let dt = 0; dt <= 300000; dt += 5000) {
     h.meter({ mocKw: 0, czestotliwoscHz: 50 }, t + dt);
-    h.water({ sondaPolaczona: true, aktualizacja: t + dt, poziomWodyProc: 20 }, t + dt);
+    h.water({ sondaPolaczona: true, aktualizacja: t + dt, aktualizacjaPoziomu: t + dt, poziomWodyProc: 20 }, t + dt);
   }
   assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM telemetry WHERE kind='agregat10s'").get().n, 31);
   assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM telemetry WHERE kind='agregat'").get().n, 6);
