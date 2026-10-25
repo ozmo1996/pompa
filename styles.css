@@ -1300,6 +1300,13 @@ button.warn-btn {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
+.summary-tile[data-param]::after {
+  content: "Wykres ›";
+  color: var(--accent);
+  font-size: 12px;
+  margin-top: auto;
+  padding-top: 8px;
+}
 .tank-stage[data-param] {
   padding: 4px;
 }

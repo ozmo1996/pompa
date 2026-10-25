@@ -10,6 +10,7 @@ import {
   waterVolumeM3,
   wetBulb,
   stationPressure,
+  counterReading,
 } from "./logic.js";
 import { weatherHistory, workHistory } from "./history.js";
 import { $, S, isLive, now, safe, user } from "./state.js";
@@ -54,6 +55,73 @@ const meterParams = Object.fromEntries(
 );
 const PARAMS = {
   ...meterParams,
+  pompa: {
+    g: "Falownik",
+    n: "Praca pompy",
+    u: "",
+    d: 0,
+    pole: "pracuje",
+    get: (r) => (r.falownikPolaczony === true && typeof r.pracuje === "boolean" ? Number(r.pracuje) : null),
+    now: (s) => (typeof s?.pracuje === "boolean" ? Number(s.pracuje) : null),
+    lo: 0,
+    hi: 1,
+    step: 1,
+    dots: true,
+    note: "1 = pompa pracuje, 0 = zatrzymana. Brak łączności nie oznacza zatrzymania.",
+  },
+  tloczenie: {
+    g: "Pomiar",
+    n: "Ciśnienie tłoczenia",
+    u: " bar",
+    d: 1,
+    pole: "cisnienieBar",
+    get: (r) => r.cisnienieBar,
+    now: (s) =>
+      s?.cisnienieTloczenia?.polaczony === true && isFresh(s.cisnienieTloczenia.aktualizacja, now(), 3000)
+        ? s.cisnienieTloczenia.bar
+        : null,
+    timestamp: (s) => s?.cisnienieTloczenia?.aktualizacja,
+    lo: 0,
+    span: 1,
+    note: "Historia ciśnienia jest zapisywana tylko podczas pracy pompy.",
+  },
+  poziomCm: {
+    g: "Zbiornik",
+    n: "Wysokość słupa wody",
+    u: " cm",
+    d: 1,
+    pole: "poziom",
+    get: (r) => (isNum(r.poziom) ? (r.poziom * CFG.zbiornik.wysokoscCm) / 100 : null),
+    now: (s) => (isNum(s?.poziomWodyProc) ? (s.poziomWodyProc * CFG.zbiornik.wysokoscCm) / 100 : null),
+    lo: 0,
+    hi: CFG.zbiornik.wysokoscCm,
+  },
+  przepompowane: {
+    g: "Pomiar",
+    n: "Przepompowana woda · licznik całkowity (szacunek)",
+    u: " m³",
+    d: 2,
+    pole: "przepompowaneM3",
+    get: (r) => r.przepompowaneM3,
+    now: (s) => counterReading(s, "wodaM3")?.total,
+    timestamp: (s) => s?.wydajnoscPompy?.ostatniPomiar,
+    lo: 0,
+    span: 1,
+    note: "Wykres pokazuje sumę całkowitą. Zerowanie wskazania okresowego nie zmienia historii. Wartość szacowana, nie pomiar przepływomierzem.",
+  },
+  wydajnosc: {
+    g: "Pomiar",
+    n: "Szacowana wydajność pompy",
+    u: " m³/h",
+    d: 1,
+    pole: "wydajnoscM3h",
+    get: (r) => r.wydajnoscM3h,
+    now: (s) => (isFresh(s?.wydajnoscPompy?.aktualizacja, now(), 3000) ? s?.wydajnoscPompy?.wydajnoscM3h : null),
+    timestamp: (s) => s?.wydajnoscPompy?.aktualizacja,
+    lo: 0,
+    span: 1,
+    note: "Szacunek z charakterystyki pompy; nie zastępuje przepływomierza.",
+  },
   hz: {
     g: "Falownik",
     n: "Częstotliwość wyjściowa",
@@ -303,10 +371,21 @@ let pc = null, // { key, hover, loading, error, points, geo }
 const cacheFor = (P) => (P.g === "Pogoda" ? weatherHistory : workHistory);
 const hhmm = (t) => new Date(t).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
 function currentValue(P) {
+  if (!S.connected || S.denied) return null;
+  if (P.g === "Falownik" && (!isLive() || S.status?.polaczony !== true)) return null;
   if (
     P.g === "Zbiornik" &&
     (!isLive() ||
       (P.pole === "temperaturaWody" ? S.status?.temperaturaWodyPolaczona !== true : S.status?.sondaPolaczona !== true))
+  )
+    return null;
+  if (
+    P.g === "Zbiornik" &&
+    !isFresh(
+      P.pole === "temperaturaWody" ? S.status?.aktualizacjaTemperatury : S.status?.aktualizacjaPoziomu,
+      now(),
+      P.pole === "temperaturaWody" ? 15000 : 5000,
+    )
   )
     return null;
   return P.now(S.status);
@@ -320,7 +399,15 @@ function points(P) {
     if (isNum(v)) pts.push({ t: r.czas, v });
   }
   // dołóż bieżący odczyt, jeśli jest świeższy niż ostatni zapis w historii
-  const t = Number(P.timestamp ? P.timestamp(S.status) : S.status?.aktualizacja),
+  const t = Number(
+      P.timestamp
+        ? P.timestamp(S.status)
+        : P.g === "Zbiornik"
+          ? P.pole === "temperaturaWody"
+            ? S.status?.aktualizacjaTemperatury
+            : S.status?.aktualizacjaPoziomu
+          : S.status?.aktualizacja,
+    ),
     v = currentValue(P);
   if (isFresh(t, now()) && isNum(v) && (!pts.length || t > pts.at(-1).t + 20000)) pts.push({ t, v, live: true });
   return pts;
@@ -355,6 +442,7 @@ function render() {
               : P.g === "Zbiornik"
                 ? "poziom wody: także co 5 min podczas postoju."
                 : "praca: podsumowanie co ok. 1 min; pełny zapis 10 s na Raspberry.");
+  if (P.note && !pc.loading && !pc.error) $("pcNote").textContent += " " + P.note;
   if (pc.hover == null)
     $("pcHover").textContent = vs.length > 1 ? "Przesuń palcem po wykresie, aby odczytać wartość." : "";
   draw();
@@ -556,10 +644,21 @@ async function load(key, maxAge) {
   }
 }
 
-export async function openParamChart(key) {
+export async function openParamChart(key, options = [key]) {
   if (!PARAMS[key] || !user()) return;
   const cache = cacheFor(PARAMS[key]);
   pc = { key, hover: null, loading: cache.from > now() - WIN, error: false };
+  const choices = [...new Set([key, ...options])].filter((k) => PARAMS[k]);
+  $("pcParameterField").hidden = choices.length < 2;
+  $("pcParameter").replaceChildren(
+    ...choices.map((k) => {
+      const option = document.createElement("option");
+      option.textContent = PARAMS[k].n;
+      option.value = k;
+      return option;
+    }),
+  );
+  $("pcParameter").value = key;
   const d = $("paramDlg");
   if (typeof d.showModal === "function") {
     if (!d.open) d.showModal();
@@ -584,6 +683,12 @@ export function closeParamChart() {
 export const refreshParamChart = () => pc && !pc.loading && render();
 
 export function initParamChart() {
+  $("pcParameter").addEventListener("change", () => {
+    openParamChart(
+      $("pcParameter").value,
+      [...$("pcParameter").options].map((o) => o.value),
+    );
+  });
   const view = $("overviewView");
   view.querySelectorAll("[data-param]").forEach((node) => {
     const P = PARAMS[node.dataset.param];
@@ -597,7 +702,7 @@ export function initParamChart() {
     const node = e.target.closest("[data-param]");
     if (node) {
       e.preventDefault();
-      openParamChart(node.dataset.param);
+      openParamChart(node.dataset.param, node.dataset.paramOptions?.split(" "));
     }
   });
   view.addEventListener("keydown", (e) => {
@@ -605,7 +710,7 @@ export function initParamChart() {
     const node = e.target.closest("[data-param]");
     if (node) {
       e.preventDefault();
-      openParamChart(node.dataset.param);
+      openParamChart(node.dataset.param, node.dataset.paramOptions?.split(" "));
     }
   });
   $("pcClose").addEventListener("click", closeParamChart);

@@ -57,6 +57,61 @@ async function open({ data, seed = {}, clockSkew = 0, sdkFails = false, clock = 
 }
 const writes = (page, p) => page.evaluate((p) => globalThis.__fb.writes.filter((w) => w.path === p), p);
 
+test("Podgląd: wszystkie kafelki pomiarowe otwierają wykresy, wybór parametrów i klawiatura", async () => {
+  const data = seedData();
+  const t = Date.now();
+  data.pompa.historia.pressure = { czas: t - 60000, typ: "cisnienie", cisnienieBar: 25 };
+  data.pompa.historia.flow = { czas: t - 60000, wydajnoscM3h: 40, przepompowaneM3: 123.5 };
+  const { page, ctx, errors } = await open({ data });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  for (const [id, title] of [
+    ["summaryPump", "Praca pompy"],
+    ["summaryPressure", "Ciśnienie tłoczenia"],
+    ["summaryWater", "Wysokość słupa wody"],
+    ["summaryPower", "Moc"],
+    ["summaryMeterPower", "Moc czynna agregatu"],
+    ["summaryWaterTemp", "Temperatura wody"],
+    ["summaryWeatherTemp", "Temperatura powietrza"],
+    ["summaryPumpedWater", "Przepompowana woda · licznik całkowity (szacunek)"],
+  ]) {
+    const tile = page.locator(`#${id}`).locator("..");
+    const target = id === "summaryPower" || id === "summaryMeterPower" ? tile.locator("..") : tile;
+    assert.equal(await target.getAttribute("role"), "button");
+    await target.click();
+    await page.waitForSelector("#paramDlg[open]");
+    assert.equal(await page.textContent("#pcTitle"), title);
+    await page.waitForFunction(() => !document.getElementById("pcNote").textContent.includes("Pobieranie"));
+    if (id === "summaryPressure") assert.match(await page.textContent("#pcMax"), /25 bar/);
+    if (id === "summaryWater") {
+      assert.match(await page.textContent("#pcNow"), /160,5 cm/);
+      await page.selectOption("#pcParameter", "poziom");
+      assert.match(await page.textContent("#pcNow"), /64,2 %/);
+      await page.selectOption("#pcParameter", "m3");
+      assert.equal(await page.textContent("#pcTitle"), "Objętość wody");
+    }
+    if (id === "summaryPower" || id === "summaryMeterPower") {
+      await page.selectOption("#pcParameter", id === "summaryPower" ? "hz" : "nd20Hz");
+      assert.match(await page.textContent("#pcTitle"), /Częstotliwość/);
+    }
+    if (id === "summaryPumpedWater") {
+      assert.match(await page.textContent("#pcMax"), /123,5 m³/);
+      await page.selectOption("#pcParameter", "wydajnosc");
+      assert.match(await page.textContent("#pcMax"), /40 m³\/h/);
+    }
+    await page.click("#pcClose");
+  }
+  const pump = page.locator('[data-overview-tile="summaryPump"]');
+  await pump.focus();
+  await pump.press("Enter");
+  assert.equal(await page.textContent("#pcTitle"), "Praca pompy");
+  await page.evaluate(() => globalThis.__fb.set("pompa/status/polaczony", false));
+  assert.equal(await page.textContent("#pcNow"), "—");
+  assert.match(await page.textContent("#pcNote"), /1 = pompa pracuje/);
+  assert.deepEqual(await writes(page, "pompa/polecenia"), []);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
 test("Aktualizacja: HTML i wszystkie lokalne moduły korzystają z jednej wersji cache", async () => {
   const { page, ctx, errors } = await open();
   const requests = [];
@@ -1274,7 +1329,7 @@ test("ND20: brak miernika i świeży odczyt są wyraźnie rozróżnione", async 
       nd20: { mocKw: 70 },
     }),
   );
-  await page.click('[data-param="nd20Power"]');
+  await page.click('.weather-metric[data-param="nd20Power"]');
   await page.waitForFunction(() => document.getElementById("pcNote").textContent.includes("agregat: zapis"));
   assert.equal(await page.textContent("#pcTitle"), "Moc czynna agregatu");
   assert.match(await page.textContent("#pcMin"), /70/);

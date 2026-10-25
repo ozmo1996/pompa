@@ -11,42 +11,42 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon-192.png" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="styles.css?v=2.39" />
+    <link rel="stylesheet" href="styles.css?v=2.40" />
     <!-- Jedna wersja wszystkich modułów: nowy HTML nie może uruchomić starych skryptów z cache HTTP. -->
     <script type="importmap">
       {
         "imports": {
-          "./config.js": "./config.js?v=2.39",
-          "./js/main.js": "./js/main.js?v=2.39",
-          "./js/state.js": "./js/state.js?v=2.39",
-          "./js/logic.js": "./js/logic.js?v=2.39",
-          "./js/control.js": "./js/control.js?v=2.39",
-          "./js/counters.js": "./js/counters.js?v=2.39",
-          "./js/pressureControl.js": "./js/pressureControl.js?v=2.39",
-          "./js/waterSafety.js": "./js/waterSafety.js?v=2.39",
-          "./js/overview.js": "./js/overview.js?v=2.39",
-          "./js/overviewLayout.js": "./js/overviewLayout.js?v=2.39",
-          "./js/sensors.js": "./js/sensors.js?v=2.39",
-          "./js/pumpEstimate.js": "./js/pumpEstimate.js?v=2.39",
-          "./js/stats.js": "./js/stats.js?v=2.39",
-          "./js/history.js": "./js/history.js?v=2.39",
-          "./js/paramChart.js": "./js/paramChart.js?v=2.39",
-          "./js/valveTable.js": "./js/valveTable.js?v=2.39",
-          "./js/notes.js": "./js/notes.js?v=2.39",
-          "./js/heartbeat.js": "./js/heartbeat.js?v=2.39",
-          "./js/alarms.js": "./js/alarms.js?v=2.39",
-          "./js/alarmSettings.js": "./js/alarmSettings.js?v=2.39",
-          "./js/push.js": "./js/push.js?v=2.39",
-          "./raspberry/psychrometrics.js": "./raspberry/psychrometrics.js?v=2.39",
-          "./raspberry/pump-estimate.js": "./raspberry/pump-estimate.js?v=2.39",
-          "./raspberry/water-safety-schema.js": "./raspberry/water-safety-schema.js?v=2.39",
-          "./raspberry/pressure-control-schema.js": "./raspberry/pressure-control-schema.js?v=2.39",
-          "./raspberry/alarm-schema.js": "./raspberry/alarm-schema.js?v=2.39"
+          "./config.js": "./config.js?v=2.40",
+          "./js/main.js": "./js/main.js?v=2.40",
+          "./js/state.js": "./js/state.js?v=2.40",
+          "./js/logic.js": "./js/logic.js?v=2.40",
+          "./js/control.js": "./js/control.js?v=2.40",
+          "./js/counters.js": "./js/counters.js?v=2.40",
+          "./js/pressureControl.js": "./js/pressureControl.js?v=2.40",
+          "./js/waterSafety.js": "./js/waterSafety.js?v=2.40",
+          "./js/overview.js": "./js/overview.js?v=2.40",
+          "./js/overviewLayout.js": "./js/overviewLayout.js?v=2.40",
+          "./js/sensors.js": "./js/sensors.js?v=2.40",
+          "./js/pumpEstimate.js": "./js/pumpEstimate.js?v=2.40",
+          "./js/stats.js": "./js/stats.js?v=2.40",
+          "./js/history.js": "./js/history.js?v=2.40",
+          "./js/paramChart.js": "./js/paramChart.js?v=2.40",
+          "./js/valveTable.js": "./js/valveTable.js?v=2.40",
+          "./js/notes.js": "./js/notes.js?v=2.40",
+          "./js/heartbeat.js": "./js/heartbeat.js?v=2.40",
+          "./js/alarms.js": "./js/alarms.js?v=2.40",
+          "./js/alarmSettings.js": "./js/alarmSettings.js?v=2.40",
+          "./js/push.js": "./js/push.js?v=2.40",
+          "./raspberry/psychrometrics.js": "./raspberry/psychrometrics.js?v=2.40",
+          "./raspberry/pump-estimate.js": "./raspberry/pump-estimate.js?v=2.40",
+          "./raspberry/water-safety-schema.js": "./raspberry/water-safety-schema.js?v=2.40",
+          "./raspberry/pressure-control-schema.js": "./raspberry/pressure-control-schema.js?v=2.40",
+          "./raspberry/alarm-schema.js": "./raspberry/alarm-schema.js?v=2.40"
         }
       }
     </script>
-    <link rel="modulepreload" href="js/logic.js?v=2.39" />
-    <script type="module" src="js/main.js?v=2.39"></script>
+    <link rel="modulepreload" href="js/logic.js?v=2.40" />
+    <script type="module" src="js/main.js?v=2.40"></script>
   </head>
   <body>
     <main class="wrap">
@@ -191,22 +191,22 @@
             <p id="overviewLayoutMessage" class="small" role="status" aria-live="polite"></p>
           </section>
           <div class="overview-summary" aria-label="Najważniejsze parametry instalacji">
-            <article class="card summary-tile">
+            <article class="card summary-tile" data-param="pompa">
               <small>Pompa</small><b id="summaryPump">—</b><span id="summaryPumpDetail">Brak potwierdzenia stanu</span>
             </article>
-            <article class="card summary-tile">
+            <article class="card summary-tile" data-param="tloczenie">
               <small>Ciśnienie tłoczenia</small><b id="summaryPressure">— bar</b><span>Pomiar przy pompie</span>
             </article>
-            <article class="card summary-tile">
+            <article class="card summary-tile" data-param="poziomCm" data-param-options="poziomCm poziom m3">
               <small>Poziom wody</small><b id="summaryWater">— cm</b><span id="summaryWaterDetail">— % poziomu</span>
             </article>
-            <article class="card summary-tile">
+            <article class="card summary-tile" data-param="moc" data-param-options="moc hz">
               <small>Moc falownika · częstotliwość</small>
               <div class="summary-meter-values"><b id="summaryPower">— kW</b><b id="summaryDriveHz">— Hz</b></div>
               <span id="summaryPowerDetail">Brak odczytu</span>
             </article>
           </div>
-          <article class="card summary-tile">
+          <article class="card summary-tile" data-param="przepompowane" data-param-options="przepompowane wydajnosc">
             <small>Przepompowana woda · szacunek</small><b id="summaryPumpedWater">— m³</b>
             <span id="summaryPumpedWaterState">Oczekiwanie na próbki</span>
             <span>Trwały licznik Raspberry · od instalacji · przerwy bez danych pomijane</span>
@@ -217,7 +217,7 @@
               <small>Temperatura wody</small><b id="summaryWaterTemp">— °C</b
               ><span id="summaryWaterTempState">Brak pomiaru</span>
             </article>
-            <article class="card summary-tile">
+            <article class="card summary-tile" data-param="nd20Power" data-param-options="nd20Power nd20Hz">
               <small>Agregat · ND20</small>
               <div class="summary-meter-values"><b id="summaryMeterPower">— kW</b><b id="summaryMeterHz">— Hz</b></div>
               <span id="summaryMeterState">Brak aktualnego pomiaru ND20</span>
@@ -1194,6 +1194,10 @@
           <button id="pcClose" type="button" class="secondary pc-close">Zamknij</button>
         </div>
         <div class="pc-now"><span id="pcNow">—</span><small id="pcNowNote"></small></div>
+          <div id="pcParameterField" hidden>
+            <label for="pcParameter">Parametr wykresu</label>
+            <select id="pcParameter"></select>
+          </div>
         <div class="pc-stats">
           <span>Min <b id="pcMin">—</b></span
           ><span>Średnio <b id="pcAvg">—</b></span
