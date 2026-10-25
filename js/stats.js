@@ -26,6 +26,7 @@ function fillPeriod() {
   const { from, to } = period();
   $("statsFrom").value = localDateInput(from);
   $("statsTo").value = localDateInput(to);
+  $("statsHours").value = String(Math.round((to - from) / 3600) / 1000);
 }
 const charts = {
   waterChart: ["poziom", "#4cc9e8", "%", 100, 6 * 60000],
@@ -320,6 +321,16 @@ async function loadStats(maxAge = 60000) {
 
 export function initStats() {
   fillPeriod();
+  $("statsHours").addEventListener("input", () => {
+    const from = new Date($("statsFrom").value).getTime(),
+      hours = Number($("statsHours").value);
+    if (Number.isFinite(from) && hours > 0 && hours <= 720) $("statsTo").value = localDateInput(from + hours * 3600000);
+  });
+  for (const id of ["statsFrom", "statsTo"])
+    $(id).addEventListener("change", () => {
+      const ms = new Date($("statsTo").value) - new Date($("statsFrom").value);
+      $("statsHours").value = ms > 0 ? String(Math.round(ms / 3600) / 1000) : "";
+    });
   const setPeriod = (from, to) => {
     const t = now();
     if (!Number.isFinite(from) || !Number.isFinite(to) || from >= to || to - from < 60000) {

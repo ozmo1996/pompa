@@ -67,9 +67,9 @@ test("Podgląd: wszystkie kafelki pomiarowe otwierają wykresy, wybór parametr�
   for (const [id, title] of [
     ["summaryPump", "Praca pompy"],
     ["summaryPressure", "Ciśnienie tłoczenia"],
-    ["summaryWater", "Wysokość słupa wody"],
-    ["summaryPower", "Moc"],
-    ["summaryMeterPower", "Moc czynna agregatu"],
+    ["summaryWater", "Poziom wody · cm i %"],
+    ["summaryPower", "Moc i częstotliwość falownika"],
+    ["summaryMeterPower", "Agregat · moc i częstotliwość"],
     ["summaryWaterTemp", "Temperatura wody"],
     ["summaryWeatherTemp", "Temperatura powietrza"],
     ["summaryPumpedWater", "Przepompowana woda · licznik całkowity (szacunek)"],
@@ -108,6 +108,74 @@ test("Podgląd: wszystkie kafelki pomiarowe otwierają wykresy, wybór parametr�
   assert.equal(await page.textContent("#pcNow"), "—");
   assert.match(await page.textContent("#pcNote"), /1 = pompa pracuje/);
   assert.deepEqual(await writes(page, "pompa/polecenia"), []);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("Wykresy: dwie osie, własna data i godziny filtrują obie serie bez bieżących próbek", async () => {
+  const t = Date.now(),
+    data = seedData(t);
+  const start = new Date(t - 4 * 3600000);
+  start.setMilliseconds(0);
+  const from = start.getTime();
+  data.pompa.historia = {
+    before: { czas: from - 1000, moc: 999, hz: 49 },
+    inside: { czas: from + 60000, moc: 20, hz: 30 },
+    inside2: { czas: from + 120000, moc: 25, hz: 35 },
+    unrelated: { czas: from + 90000, poziom: 40 },
+    after: { czas: from + 3600001, moc: 888, hz: 48 },
+  };
+  const { page, ctx, errors } = await open({ data });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.locator('[data-overview-tile="summaryPower"]').click();
+  assert.match(await page.textContent("#pcLegend"), /kW.*lewa oś.*Hz.*prawa oś/);
+  const input = (v) =>
+    page.evaluate((v) => new Date(v - new Date(v).getTimezoneOffset() * 60000).toISOString().slice(0, 19), v);
+  await page.fill("#pcFrom", await input(from));
+  await page.fill("#pcHours", "1");
+  await page.locator("#pcPeriodForm button[type=submit]").click();
+  await page.waitForFunction(
+    () =>
+      document.getElementById("pcPeriodMessage").textContent.includes("stały okres") &&
+      !document.getElementById("pcNote").textContent.includes("Pobieranie"),
+  );
+  assert.match(await page.textContent("#pcMin"), /20 kW/);
+  assert.match(await page.textContent("#pcMax"), /25 kW/);
+  assert.match(await page.textContent("#pcSecondStats"), /Min 30 Hz.*Maks 35 Hz/);
+  assert.equal(await page.textContent("#pcNow"), "25 kW");
+  await page.selectOption("#pcParameter", "hz");
+  assert.match(await page.textContent("#pcPeriodMessage"), /stały okres/);
+  assert.match(await page.textContent("#pcMax"), /35 Hz/);
+  await page.click("#pcPrevious");
+  await page.waitForFunction(() => !document.getElementById("pcNote").textContent.includes("Pobieranie"));
+  await page.click("#pcPrevious");
+  await page.waitForFunction(() => !document.getElementById("pcNote").textContent.includes("Pobieranie"));
+  assert.equal(await page.textContent("#pcNow"), "— Hz");
+  await page.fill("#pcFrom", await input(t + 3600000));
+  await page.locator("#pcPeriodForm button[type=submit]").click();
+  assert.match(await page.textContent("#pcPeriodMessage"), /bez dat w przyszłości/);
+  await page.click("#pcLive");
+  assert.match(await page.textContent("#pcPeriodMessage"), /do teraz/);
+  await page.selectOption("#pcPreset", "24");
+  assert.equal(await page.inputValue("#pcHours"), "24");
+  for (const width of [320, 390, 1024]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.ok(
+      await page.evaluate(() => {
+        const d = document.getElementById("paramDlg");
+        return d.scrollWidth <= d.clientWidth + 1;
+      }),
+      `width ${width}`,
+    );
+  }
+  await page.click("#pcClose");
+  await page.click("#statsTab");
+  await page.fill("#statsFrom", await input(from));
+  await page.fill("#statsHours", "2");
+  assert.equal(
+    (await page.evaluate(() => new Date(document.getElementById("statsTo").value).getTime())) - from,
+    7200000,
+  );
   assert.deepEqual(errors, []);
   await ctx.close();
 });

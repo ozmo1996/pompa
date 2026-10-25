@@ -1382,6 +1382,52 @@ dialog.pc::backdrop {
   color: #ecf4ed;
   font: inherit;
 }
+.pc-period {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 0.7fr auto;
+  gap: 10px;
+  align-items: end;
+  margin: 16px 0;
+}
+.pc-period label {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.pc-period input, .pc-period select {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #0a1c15;
+  color: #ecf4ed;
+  font: inherit;
+  color-scheme: dark;
+}
+.pc-period-actions, #pcPeriodMessage {
+  grid-column: 1 / -1;
+}
+.pc-period-actions, .pc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+.pc-period-actions button {
+  min-height: 38px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.pc-legend {
+  font-size: 12px;
+}
+@media (max-width: 580px) {
+  .pc-period { grid-template-columns: 1fr 1fr; }
+}
 .pc-stats b {
   color: #ecf4ed;
   font-weight: 600;

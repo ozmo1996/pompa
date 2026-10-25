@@ -11,42 +11,42 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon-192.png" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="styles.css?v=2.40" />
+    <link rel="stylesheet" href="styles.css?v=2.41" />
     <!-- Jedna wersja wszystkich modułów: nowy HTML nie może uruchomić starych skryptów z cache HTTP. -->
     <script type="importmap">
       {
         "imports": {
-          "./config.js": "./config.js?v=2.40",
-          "./js/main.js": "./js/main.js?v=2.40",
-          "./js/state.js": "./js/state.js?v=2.40",
-          "./js/logic.js": "./js/logic.js?v=2.40",
-          "./js/control.js": "./js/control.js?v=2.40",
-          "./js/counters.js": "./js/counters.js?v=2.40",
-          "./js/pressureControl.js": "./js/pressureControl.js?v=2.40",
-          "./js/waterSafety.js": "./js/waterSafety.js?v=2.40",
-          "./js/overview.js": "./js/overview.js?v=2.40",
-          "./js/overviewLayout.js": "./js/overviewLayout.js?v=2.40",
-          "./js/sensors.js": "./js/sensors.js?v=2.40",
-          "./js/pumpEstimate.js": "./js/pumpEstimate.js?v=2.40",
-          "./js/stats.js": "./js/stats.js?v=2.40",
-          "./js/history.js": "./js/history.js?v=2.40",
-          "./js/paramChart.js": "./js/paramChart.js?v=2.40",
-          "./js/valveTable.js": "./js/valveTable.js?v=2.40",
-          "./js/notes.js": "./js/notes.js?v=2.40",
-          "./js/heartbeat.js": "./js/heartbeat.js?v=2.40",
-          "./js/alarms.js": "./js/alarms.js?v=2.40",
-          "./js/alarmSettings.js": "./js/alarmSettings.js?v=2.40",
-          "./js/push.js": "./js/push.js?v=2.40",
-          "./raspberry/psychrometrics.js": "./raspberry/psychrometrics.js?v=2.40",
-          "./raspberry/pump-estimate.js": "./raspberry/pump-estimate.js?v=2.40",
-          "./raspberry/water-safety-schema.js": "./raspberry/water-safety-schema.js?v=2.40",
-          "./raspberry/pressure-control-schema.js": "./raspberry/pressure-control-schema.js?v=2.40",
-          "./raspberry/alarm-schema.js": "./raspberry/alarm-schema.js?v=2.40"
+          "./config.js": "./config.js?v=2.41",
+          "./js/main.js": "./js/main.js?v=2.41",
+          "./js/state.js": "./js/state.js?v=2.41",
+          "./js/logic.js": "./js/logic.js?v=2.41",
+          "./js/control.js": "./js/control.js?v=2.41",
+          "./js/counters.js": "./js/counters.js?v=2.41",
+          "./js/pressureControl.js": "./js/pressureControl.js?v=2.41",
+          "./js/waterSafety.js": "./js/waterSafety.js?v=2.41",
+          "./js/overview.js": "./js/overview.js?v=2.41",
+          "./js/overviewLayout.js": "./js/overviewLayout.js?v=2.41",
+          "./js/sensors.js": "./js/sensors.js?v=2.41",
+          "./js/pumpEstimate.js": "./js/pumpEstimate.js?v=2.41",
+          "./js/stats.js": "./js/stats.js?v=2.41",
+          "./js/history.js": "./js/history.js?v=2.41",
+          "./js/paramChart.js": "./js/paramChart.js?v=2.41",
+          "./js/valveTable.js": "./js/valveTable.js?v=2.41",
+          "./js/notes.js": "./js/notes.js?v=2.41",
+          "./js/heartbeat.js": "./js/heartbeat.js?v=2.41",
+          "./js/alarms.js": "./js/alarms.js?v=2.41",
+          "./js/alarmSettings.js": "./js/alarmSettings.js?v=2.41",
+          "./js/push.js": "./js/push.js?v=2.41",
+          "./raspberry/psychrometrics.js": "./raspberry/psychrometrics.js?v=2.41",
+          "./raspberry/pump-estimate.js": "./raspberry/pump-estimate.js?v=2.41",
+          "./raspberry/water-safety-schema.js": "./raspberry/water-safety-schema.js?v=2.41",
+          "./raspberry/pressure-control-schema.js": "./raspberry/pressure-control-schema.js?v=2.41",
+          "./raspberry/alarm-schema.js": "./raspberry/alarm-schema.js?v=2.41"
         }
       }
     </script>
-    <link rel="modulepreload" href="js/logic.js?v=2.40" />
-    <script type="module" src="js/main.js?v=2.40"></script>
+    <link rel="modulepreload" href="js/logic.js?v=2.41" />
+    <script type="module" src="js/main.js?v=2.41"></script>
   </head>
   <body>
     <main class="wrap">
@@ -861,6 +861,7 @@
             <div class="stats-period-fields">
               <label>Od<input id="statsFrom" type="datetime-local" step="1" required /></label>
               <label>Do<input id="statsTo" type="datetime-local" step="1" required /></label>
+              <label>Liczba godzin<input id="statsHours" type="number" min="0.016" max="720" step="any" value="24" /></label>
               <button type="submit">Pokaż okres</button>
               <button id="statsZoomIn" type="button" class="secondary">Przybliż ×2</button>
             </div>
@@ -1194,6 +1195,15 @@
           <button id="pcClose" type="button" class="secondary pc-close">Zamknij</button>
         </div>
         <div class="pc-now"><span id="pcNow">—</span><small id="pcNowNote"></small></div>
+          <p id="pcSecondNow" class="small"></p>
+          <form id="pcPeriodForm" class="pc-period">
+            <label>Okres<select id="pcPreset"><option value="1">Ostatnia godzina</option><option value="6" selected>Ostatnie 6 godzin</option><option value="24">Ostatnie 24 godziny</option><option value="168">Ostatnie 7 dni</option><option value="720">Ostatnie 30 dni</option><option value="custom">Własny okres</option></select></label>
+            <label>Początek okresu<input id="pcFrom" type="datetime-local" step="1" required /></label>
+            <label>Liczba godzin<input id="pcHours" type="number" min="0.0166666667" max="720" step="any" value="6" required /></label>
+            <button type="submit">Pokaż</button>
+            <div class="pc-period-actions"><button id="pcPrevious" type="button" class="secondary">← Poprzedni</button><button id="pcNext" type="button" class="secondary">Następny →</button><button id="pcLive" type="button" class="secondary">Do teraz</button></div>
+            <p id="pcPeriodMessage" class="small" role="status" aria-live="polite"></p>
+          </form>
           <div id="pcParameterField" hidden>
             <label for="pcParameter">Parametr wykresu</label>
             <select id="pcParameter"></select>
@@ -1203,8 +1213,10 @@
           ><span>Średnio <b id="pcAvg">—</b></span
           ><span>Maks <b id="pcMax">—</b></span>
         </div>
+          <p id="pcSecondStats" class="small"></p>
+          <p id="pcLegend" class="pc-legend"></p>
         <p id="pcHover" class="pc-hover" aria-live="polite"></p>
-        <canvas id="pcCanvas" aria-label="Wykres parametru z ostatnich 6 godzin"></canvas>
+          <canvas id="pcCanvas" aria-label="Wykres parametrów w wybranym okresie"></canvas>
         <p id="pcNote" class="pc-note small"></p>
       </dialog>
       <button id="toast" class="toast" type="button" hidden><b id="toastTitle"></b><span id="toastBody"></span></button
