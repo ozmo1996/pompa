@@ -201,8 +201,8 @@ const PARAMS = {
     u: " m³",
     d: 1,
     pole: "m3",
-    get: (r) => waterVolumeM3(r.poziom),
-    now: (s) => waterVolumeM3(s?.poziomWodyProc),
+    get: (r) => waterVolumeM3(waterDepthCm(r.poziomCm, r.mA)),
+    now: (s) => waterVolumeM3(waterDepthCm(s?.poziomWodyCm, s?.poziomWodyMa)),
     lo: 0,
   },
   mA: {

@@ -8,6 +8,7 @@ import {
   isNum,
   niceStep,
   waterVolumeM3,
+  waterDepthCm,
   lowerBound,
   pumpedVolumeInPeriod,
 } from "./logic.js";
@@ -257,7 +258,7 @@ export function renderStats() {
               td(when(x.czas)),
               td(fmt(x.poziom, " %")),
               td(fmt(x.mA, " mA")),
-              td(fmt(waterVolumeM3(x.poziom), " m³", 0)),
+              td(fmt(waterVolumeM3(waterDepthCm(x.poziomCm, x.mA)), " m³", 0)),
               td(fmt(x.temperaturaWody, " °C")),
               td(
                 x.typ === "cisnienie"

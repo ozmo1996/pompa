@@ -249,8 +249,9 @@ function renderWater() {
   $("waterState").classList.toggle("sensor-stale", !waterFresh);
   $("tankCaption").textContent = waterFresh ? "Poziom w zbiorniku" : "Brak odczytu";
   $("tankWater").closest(".tank-vessel").classList.toggle("sensor-unknown", !waterFresh);
-  $("waterCm").textContent = fmt(waterFresh ? waterDepthCm(s.poziomWodyCm, s.poziomWodyMa) : null, " cm");
-  const volume = waterVolumeM3(water);
+  const depthCm = waterFresh ? waterDepthCm(s.poziomWodyCm, s.poziomWodyMa) : null;
+  $("waterCm").textContent = fmt(depthCm, " cm");
+  const volume = waterVolumeM3(depthCm);
   $("volume").textContent =
     volume === null ? "Objętość: brak aktualnego odczytu" : "≈ " + fmt(volume, " m³", 0) + " wody";
   $("tankCapacity").textContent = "Szacowana pojemność: ≈ " + fmt(tankCapacityM3(), " m³", 0);

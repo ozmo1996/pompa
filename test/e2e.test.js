@@ -748,10 +748,13 @@ test("Podgląd pokazuje poziom w centymetrach z Raspberry oraz procent napełnie
   assert.match(await page.textContent("#pcNow"), /209,4 cm/);
   await page.click("#pcClose");
   assert.equal(await page.textContent("#waterCm"), "209,4 cm");
+  assert.match(await page.textContent("#volume"), /1\s?319 m³/);
+  assert.match(await page.textContent("#tankCapacity"), /1\s?319 m³/);
   await page.evaluate(() => globalThis.__fb.set("pompa/status/poziomWodyCm", null));
   assert.equal(await page.textContent("#waterCm"), "209,4 cm");
   await page.evaluate(() => globalThis.__fb.set("pompa/status/poziomWodyMa", null));
   assert.equal(await page.textContent("#waterCm"), "— cm");
+  assert.match(await page.textContent("#volume"), /brak aktualnego odczytu/);
   assert.equal(await page.textContent("#summaryWater"), "— cm");
   await page.evaluate(() => globalThis.__fb.set("pompa/status/sondaPolaczona", false));
   assert.equal(await page.textContent("#summaryWater"), "— cm");
