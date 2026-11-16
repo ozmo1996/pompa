@@ -729,6 +729,26 @@ test("Kamery TEST: Stop, zmiana zakładki i przejście w tło przerywają żąda
   await ctx.close();
 });
 
+test("Podgląd pokazuje poziom w centymetrach z Raspberry oraz procent napełnienia", async () => {
+  const data = seedData(),
+    t = Date.now();
+  Object.assign(data.pompa.status, {
+    aktualizacja: t,
+    aktualizacjaPoziomu: t,
+    sondaPolaczona: true,
+    poziomWodyMa: 10.7,
+    poziomWodyCm: 209.375,
+    poziomWodyProc: 100,
+  });
+  const { page, ctx } = await open({ data });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  assert.equal(await page.textContent("#summaryWater"), "209,4 cm");
+  assert.equal(await page.textContent("#summaryWaterDetail"), "100 % poziomu");
+  await page.evaluate(() => globalThis.__fb.set("pompa/status/sondaPolaczona", false));
+  assert.equal(await page.textContent("#summaryWater"), "— cm");
+  await ctx.close();
+});
+
 test("UX: wszystkie zakładki dostępne na telefonie, podsumowanie i łączność mają osobne znaczenia", async () => {
   const data = seedData(),
     t = Date.now();
