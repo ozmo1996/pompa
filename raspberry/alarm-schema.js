@@ -221,12 +221,10 @@
       (m.source === "falownik" && s.polaczony !== true)
     )
       return null;
-    const v =
-      id === "poziomWodyCm"
-        ? finite(s.poziomWodyProc)
-          ? s.poziomWodyProc * 2.5
-          : null
-        : id.split(".").reduce((obj, key) => obj?.[key], s);
+    if (id === "poziomWodyCm") {
+      return fresh(s.aktualizacjaPoziomu, 5000) && finite(s.poziomWodyCm) && s.poziomWodyCm >= 0 ? s.poziomWodyCm : null;
+    }
+    const v = id.split(".").reduce((obj, key) => obj?.[key], s);
     return finite(v) ? v : null;
   }
   const schema = { PROGI, RULES, METRICS, defaults, validate, metricValue };

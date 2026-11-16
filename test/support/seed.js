@@ -10,7 +10,7 @@ export function seedData(now = Date.now(), { fresh = true } = {}) {
     historia["h" + i] = {
       czas,
       poziom: Math.round(poziom * 10) / 10,
-      mA: 4 + (poziom / 100) * 16,
+      mA: 4 + (poziom / 100) * 6.7,
       m3: poziom * 12,
       temperaturaWody: 3 + Math.sin(i / 300),
       falownikPolaczony: true,

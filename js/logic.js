@@ -26,6 +26,11 @@ export const fmt = (v, suffix = "", digits = 1) =>
 export const f1 = (n) => Number(n).toLocaleString("pl-PL", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 export const signed1 = (d) => (d > 0 ? "+" : "") + f1(d);
 
+export function historicalWaterLevel(row) {
+  const cm = waterDepthCm(row.poziomCm, row.mA);
+  return cm === null ? null : round1(clamp((cm / CFG.zbiornik.wysokoscCm) * 100, 0, 100));
+}
+
 /** Objętość owalnej misy; osie elipsy zwiększają się liniowo od dna do korony. */
 export function waterVolumeM3(depthCm) {
   if (!isNum(depthCm) || depthCm < 0) return null;

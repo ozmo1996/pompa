@@ -97,6 +97,7 @@ import {
   waterVolumeM3,
   tankCapacityM3,
   waterDepthCm,
+  historicalWaterLevel,
 } from "../js/logic.js";
 
 test("objętość owalnego zbiornika jest nieliniowa", () => {
@@ -106,6 +107,15 @@ test("objętość owalnego zbiornika jest nieliniowa", () => {
   assert.ok(Math.abs(waterVolumeM3(104.6875) - 571.89) < 0.01);
   assert.equal(waterVolumeM3(waterDepthCm(null, 10.7)).toFixed(2), tankCapacityM3().toFixed(2));
   assert.equal(waterVolumeM3(250), tankCapacityM3());
+});
+
+test("Historia poziomu przelicza surowe mA niezależnie od starych procentów", () => {
+  const old = { poziom: 42.9, mA: 10.7 };
+  assert.equal(historicalWaterLevel(old), 100);
+  assert.equal(old.poziom, 42.9);
+  assert.equal(historicalWaterLevel({ poziom: 98.5, mA: 10.6 }), 98.5);
+  assert.equal(historicalWaterLevel({ poziom: 42.9 }), null);
+  assert.equal(historicalWaterLevel({ poziom: 0, mA: 3.7 }), 0);
 });
 
 const running = { polaczony: true, pracuje: true, czestotliwoscWyjsciowa: 40, czestotliwoscZadana: 40, moc: 60 };

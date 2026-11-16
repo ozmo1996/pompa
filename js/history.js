@@ -1,14 +1,15 @@
 // Pamięć podręczna historii z bazy. Pobiera tylko brakujące fragmenty zamiast całego zakresu za każdym razem:
 // przy zmianie zakresu 24 h → 7 dni dociąga starsze dni, a przy odświeżeniu — wyłącznie nowe rekordy.
-import { CFG, isNum, lowerBound, mergeRows } from "./logic.js";
+import { CFG, historicalWaterLevel, isNum, lowerBound, mergeRows } from "./logic.js";
 import { dbRef, fb, now } from "./state.js";
 
 const H = CFG.historia,
   DAY = 86400e3;
 
 export class HistoryCache {
-  constructor(path) {
+  constructor(path, mapRow = (row) => row) {
     this.path = path;
+    this.mapRow = mapRow;
     this.reset();
   }
   reset() {
@@ -42,7 +43,7 @@ export class HistoryCache {
         rows = [];
       snap.forEach((ch) => {
         const v = ch.val();
-        if (v && isNum(v.czas)) rows.push({ ...v, _id: ch.key });
+        if (v && isNum(v.czas)) rows.push(this.mapRow({ ...v, _id: ch.key }));
       });
       rows.sort((a, b) => a.czas - b.czas);
       return { rows, full: rows.length >= limit((to ?? t) - from) };
@@ -72,6 +73,9 @@ export class HistoryCache {
   }
 }
 
-export const workHistory = new HistoryCache("pompa/historia");
+export const workHistory = new HistoryCache("pompa/historia", (row) => ({
+  ...row,
+  poziom: historicalWaterLevel(row),
+}));
 export const weatherHistory = new HistoryCache("pompa/historiaPogody");
 export const resetHistory = () => (workHistory.reset(), weatherHistory.reset());

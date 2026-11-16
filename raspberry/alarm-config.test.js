@@ -192,3 +192,12 @@ test("Własny alert: tylko w pracy oraz świeży czujnik, nie ostatnia zachowana
   await s.read({ temperaturaWody: 1.5, pracuje: true });
   assert.ok(Object.values(s.records).some((r) => r.typ === "wlasny_rule_1"));
 });
+
+test("Własny alert wysokości używa świeżych centymetrów z Raspberry", () => {
+  const t = 100000;
+  const s = { aktualizacja: t, aktualizacjaPoziomu: t, sondaPolaczona: true, poziomWodyProc: 100, poziomWodyCm: 209.375 };
+  assert.equal(A.metricValue(s, "poziomWodyCm", t), 209.375);
+  assert.equal(A.metricValue({ ...s, poziomWodyCm: null }, "poziomWodyCm", t), null);
+  assert.equal(A.metricValue({ ...s, aktualizacjaPoziomu: t - 5000 }, "poziomWodyCm", t), null);
+  assert.equal(A.metricValue({ ...s, sondaPolaczona: false }, "poziomWodyCm", t), null);
+});
