@@ -11,42 +11,42 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon-192.png" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="styles.css?v=2.44" />
+    <link rel="stylesheet" href="styles.css?v=2.45" />
     <!-- Jedna wersja wszystkich modułów: nowy HTML nie może uruchomić starych skryptów z cache HTTP. -->
     <script type="importmap">
       {
         "imports": {
-          "./config.js": "./config.js?v=2.44",
-          "./js/main.js": "./js/main.js?v=2.44",
-          "./js/state.js": "./js/state.js?v=2.44",
-          "./js/logic.js": "./js/logic.js?v=2.44",
-          "./js/control.js": "./js/control.js?v=2.44",
-          "./js/counters.js": "./js/counters.js?v=2.44",
-          "./js/pressureControl.js": "./js/pressureControl.js?v=2.44",
-          "./js/waterSafety.js": "./js/waterSafety.js?v=2.44",
-          "./js/overview.js": "./js/overview.js?v=2.44",
-          "./js/overviewLayout.js": "./js/overviewLayout.js?v=2.44",
-          "./js/sensors.js": "./js/sensors.js?v=2.44",
-          "./js/pumpEstimate.js": "./js/pumpEstimate.js?v=2.44",
-          "./js/stats.js": "./js/stats.js?v=2.44",
-          "./js/history.js": "./js/history.js?v=2.44",
-          "./js/paramChart.js": "./js/paramChart.js?v=2.44",
-          "./js/valveTable.js": "./js/valveTable.js?v=2.44",
-          "./js/notes.js": "./js/notes.js?v=2.44",
-          "./js/heartbeat.js": "./js/heartbeat.js?v=2.44",
-          "./js/alarms.js": "./js/alarms.js?v=2.44",
-          "./js/alarmSettings.js": "./js/alarmSettings.js?v=2.44",
-          "./js/push.js": "./js/push.js?v=2.44",
-          "./raspberry/psychrometrics.js": "./raspberry/psychrometrics.js?v=2.44",
-          "./raspberry/pump-estimate.js": "./raspberry/pump-estimate.js?v=2.44",
-          "./raspberry/water-safety-schema.js": "./raspberry/water-safety-schema.js?v=2.44",
-          "./raspberry/pressure-control-schema.js": "./raspberry/pressure-control-schema.js?v=2.44",
-          "./raspberry/alarm-schema.js": "./raspberry/alarm-schema.js?v=2.44"
+          "./config.js": "./config.js?v=2.45",
+          "./js/main.js": "./js/main.js?v=2.45",
+          "./js/state.js": "./js/state.js?v=2.45",
+          "./js/logic.js": "./js/logic.js?v=2.45",
+          "./js/control.js": "./js/control.js?v=2.45",
+          "./js/counters.js": "./js/counters.js?v=2.45",
+          "./js/pressureControl.js": "./js/pressureControl.js?v=2.45",
+          "./js/waterSafety.js": "./js/waterSafety.js?v=2.45",
+          "./js/overview.js": "./js/overview.js?v=2.45",
+          "./js/overviewLayout.js": "./js/overviewLayout.js?v=2.45",
+          "./js/sensors.js": "./js/sensors.js?v=2.45",
+          "./js/pumpEstimate.js": "./js/pumpEstimate.js?v=2.45",
+          "./js/stats.js": "./js/stats.js?v=2.45",
+          "./js/history.js": "./js/history.js?v=2.45",
+          "./js/paramChart.js": "./js/paramChart.js?v=2.45",
+          "./js/valveTable.js": "./js/valveTable.js?v=2.45",
+          "./js/notes.js": "./js/notes.js?v=2.45",
+          "./js/heartbeat.js": "./js/heartbeat.js?v=2.45",
+          "./js/alarms.js": "./js/alarms.js?v=2.45",
+          "./js/alarmSettings.js": "./js/alarmSettings.js?v=2.45",
+          "./js/push.js": "./js/push.js?v=2.45",
+          "./raspberry/psychrometrics.js": "./raspberry/psychrometrics.js?v=2.45",
+          "./raspberry/pump-estimate.js": "./raspberry/pump-estimate.js?v=2.45",
+          "./raspberry/water-safety-schema.js": "./raspberry/water-safety-schema.js?v=2.45",
+          "./raspberry/pressure-control-schema.js": "./raspberry/pressure-control-schema.js?v=2.45",
+          "./raspberry/alarm-schema.js": "./raspberry/alarm-schema.js?v=2.45"
         }
       }
     </script>
-    <link rel="modulepreload" href="js/logic.js?v=2.44" />
-    <script type="module" src="js/main.js?v=2.44"></script>
+    <link rel="modulepreload" href="js/logic.js?v=2.45" />
+    <script type="module" src="js/main.js?v=2.45"></script>
   </head>
   <body>
     <main class="wrap">
@@ -366,7 +366,7 @@
                       <div class="tank-water" id="tankWater"></div>
                       <div class="tank-glass"></div>
                     </div>
-                    <div class="tank-ticks"><span>250 cm</span><span>125 cm</span><span>0 cm</span></div>
+                    <div class="tank-ticks"><span id="tankFullCm"></span><span id="tankHalfCm"></span><span>0 cm</span></div>
                   </div>
                   <div class="tank-caption" id="tankCaption">Poziom w zbiorniku</div>
                 </div>
@@ -748,7 +748,7 @@
                 </div>
                 <p id="waterSafetyPercents" class="small"></p>
                 <p class="small">
-                  Poziom liczony z sondy dla zakresu 0–250 cm, nie procent objętości. Dobierz STOP powyżej minimalnego
+                  Progi odnoszą się do wysokości słupa wody nad sondą. Dobierz STOP powyżej minimalnego
                   zanurzenia wlotu pompy, uwzględniając czas zatrzymania i niedokładność kalibracji. 25 i 50 cm to tylko
                   wartości przykładowe.
                 </p>

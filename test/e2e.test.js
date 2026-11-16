@@ -750,6 +750,9 @@ test("Podgląd pokazuje poziom w centymetrach z Raspberry oraz procent napełnie
   assert.equal(await page.textContent("#waterCm"), "209,4 cm");
   assert.match(await page.textContent("#volume"), /1\s?319 m³/);
   assert.match(await page.textContent("#tankCapacity"), /1\s?319 m³/);
+  assert.equal(await page.textContent("#tankFullCm"), "209,4 cm");
+  await page.click("#controlTab");
+  assert.equal(await page.textContent("#waterSafetyLevel"), "209,4 cm · 100 %");
   await page.evaluate(() => globalThis.__fb.set("pompa/status/poziomWodyCm", null));
   assert.equal(await page.textContent("#waterCm"), "209,4 cm");
   await page.evaluate(() => globalThis.__fb.set("pompa/status/poziomWodyMa", null));
@@ -933,7 +936,7 @@ test("Zabezpieczenie wody: niezależne opcje, walidacja, cm/% i zapis bez rozruc
   page.once("dialog", (d) => d.accept());
   await page.click("#saveWaterSafety");
   await page.waitForFunction(() => globalThis.__fb.store.pompa.ustawienia.zabezpieczenieWody?.stopCm === 40);
-  assert.match(await page.textContent("#waterSafetyPercents"), /16.*24/);
+  assert.match(await page.textContent("#waterSafetyPercents"), /19,1.*28,7/);
   assert.equal((await writes(page, "pompa/polecenie")).length, 0);
   assert.deepEqual(errors, []);
   await ctx.close();

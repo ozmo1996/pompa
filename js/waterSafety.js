@@ -1,6 +1,6 @@
 import "../raspberry/water-safety-schema.js";
-import { $, S, fb, dbRef, user, now, showView } from "./state.js";
-import { fmt, isFresh, parseDecimal } from "./logic.js";
+import { $, S, fb, dbRef, user, now, isLive, showView } from "./state.js";
+import { CFG, fmt, isFresh, isNum, parseDecimal, waterDepthCm } from "./logic.js";
 import { showToast } from "./alarms.js";
 const A = globalThis.POMPA_WATER_SAFETY;
 let dirty = false,
@@ -8,6 +8,12 @@ let dirty = false,
   denied = false,
   previous = "";
 const inputs = ["waterStopOn", "waterStopCm", "waterWarnOn", "waterWarnCm"];
+function freshWaterStatus() {
+  const s = S.status;
+  return isLive() && s?.sondaPolaczona === true && isFresh(s.aktualizacjaPoziomu, now(), 5000) ? s : null;
+}
+const fullDepth = CFG.zbiornik.wysokoscCm;
+
 function fill() {
   if (dirty) return;
   const c = S.waterCfg || A.defaults();
@@ -20,12 +26,12 @@ export function waterCanStart() {
   if (S.waterBackend?.awaria || S.waterBackend?.stopNiepotwierdzony) return false;
   if (!S.waterCfg?.wlaczony) return true;
   const b = S.waterBackend,
-    cm = A.level(S.status, now());
+    cm = freshWaterStatus()?.poziomWodyCm;
   return (
     b?.ustawieniaId === S.waterCfg.id &&
     isFresh(b.aktualizacja, now(), 5000) &&
     b.wlaczony === true &&
-    cm !== null &&
+    isNum(cm) &&
     cm > S.waterCfg.stopCm + 5
   );
 }
@@ -68,14 +74,15 @@ export function renderWaterSafety() {
   $("waterThresholdSummary").textContent =
     `Zatrzymanie: ${c.wlaczony ? c.stopCm + " cm" : "wyłączone"}. Wcześniejsze ostrzeżenie: ${c.ostrzegaj ? c.ostrzezenieCm + " cm" : "wyłączone"}. ` +
     (alarm
-      ? `Osobna reguła alarmowa: ${alarm.reguly.niskiPoziom.wlaczony ? "poniżej " + alarm.progi.poziomNiski + "% (" + Math.round(alarm.progi.poziomNiski * 2.5 * 10) / 10 + " cm)" : "wyłączona"}. Ta reguła sama nie wysyła STOP.`
+      ? `Osobna reguła alarmowa: ${alarm.reguly.niskiPoziom.wlaczony ? "poniżej " + alarm.progi.poziomNiski + "% (" + fmt((alarm.progi.poziomNiski * fullDepth) / 100, " cm") + ")" : "wyłączona"}. Ta reguła sama nie wysyła STOP.`
       : "Ustawienia dodatkowej reguły alarmowej nie zostały wczytane.");
-  const cm = A.level(S.status, now());
-  $("waterSafetyLevel").textContent = fmt(cm, " cm") + " · " + fmt(cm === null ? null : cm / 2.5, " %");
+  const s = freshWaterStatus();
+  $("waterSafetyLevel").textContent =
+    fmt(waterDepthCm(s?.poziomWodyCm, s?.poziomWodyMa), " cm") + " · " + fmt(s?.poziomWodyProc, " %");
   const stop = parseDecimal($("waterStopCm").value),
     warn = parseDecimal($("waterWarnCm").value);
   $("waterSafetyPercents").textContent =
-    `STOP: ${fmt(stop === null ? null : stop / 2.5, " %")} · ostrzeżenie: ${fmt(warn === null ? null : warn / 2.5, " %")}`;
+    `STOP: ${fmt((stop / fullDepth) * 100, " %")} · ostrzeżenie: ${fmt((warn / fullDepth) * 100, " %")}`;
   const text = b?.awaria
     ? "Zabezpieczenie wody — " +
       b.awaria +

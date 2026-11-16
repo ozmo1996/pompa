@@ -24,6 +24,9 @@ const { progi: P } = CFG;
 let manualPressure = null;
 const MANUAL_PRESSURE_MS = 15 * 60000;
 export function initSensors() {
+  const fullDepth = CFG.zbiornik.wysokoscCm;
+  $("tankFullCm").textContent = fmt(fullDepth, " cm");
+  $("tankHalfCm").textContent = fmt(fullDepth / 2, " cm");
   $("summaryValvesTable").addEventListener("click", () => $("showValveTable").click());
   $("manualPressureOverride").addEventListener("change", renderWeather);
   const head = el("tr", {}, el("th", { scope: "col", textContent: "Mokry °C / bar" }));
