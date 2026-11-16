@@ -1,5 +1,5 @@
 import { $, S, now, isLive } from "./state.js";
-import { CFG, fmt, isFresh, isNum, powerReading, driveStateText, counterReading } from "./logic.js";
+import { fmt, isFresh, isNum, powerReading, driveStateText, counterReading, waterDepthCm } from "./logic.js";
 
 function status(id, text, level) {
   const node = $(id);
@@ -47,11 +47,7 @@ export function renderOverview() {
     isNum(s.poziomWodyProc) &&
     s.poziomWodyProc >= 0 &&
     s.poziomWodyProc <= 100;
-  const waterCm = water && isNum(s.poziomWodyCm) && s.poziomWodyCm >= 0 ? s.poziomWodyCm : null;
-  $("summaryWater").textContent =
-    water && waterCm === null
-      ? "≈ " + fmt((s.poziomWodyProc * CFG.zbiornik.wysokoscCm) / 100, " cm")
-      : fmt(waterCm, " cm");
+  $("summaryWater").textContent = fmt(water ? waterDepthCm(s.poziomWodyCm, s.poziomWodyMa) : null, " cm");
   $("summaryWaterDetail").textContent = water ? fmt(s.poziomWodyProc, " %") + " poziomu" : "Brak aktualnego pomiaru";
   const power = drive ? powerReading(s) : null;
   $("summaryPower").textContent = (power?.est ? "≈ " : "") + fmt(power ? Math.max(0, power.kw) : null, " kW");

@@ -6,6 +6,11 @@ export const CFG = globalThis.POMPA_CONFIG;
 const { silnik: M, progi: P } = CFG;
 
 export const isNum = (v) => typeof v === "number" && Number.isFinite(v);
+// Starsze próbki mogą zawierać tylko prąd sondy 4–20 mA (0–500 cm).
+export function waterDepthCm(cm, mA) {
+  if (isNum(cm) && cm >= 0) return cm;
+  return isNum(mA) && mA >= 3.7 && mA <= 20 ? (Math.max(0, mA - 4) * 500) / 16 : null;
+}
 export const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 /** Liczba z pola formularza — akceptuje przecinek dziesiętny. Pusty tekst to NaN, nie 0. */
 export const parseDecimal = (s) => {

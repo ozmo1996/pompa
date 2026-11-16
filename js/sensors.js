@@ -13,6 +13,7 @@ import {
   parseDecimal,
   windDirection,
   waterVolumeM3,
+  waterDepthCm,
   tankCapacityM3,
 } from "./logic.js";
 import { $, S, isLive, now, user, el } from "./state.js";
@@ -248,7 +249,7 @@ function renderWater() {
   $("waterState").classList.toggle("sensor-stale", !waterFresh);
   $("tankCaption").textContent = waterFresh ? "Poziom w zbiorniku" : "Brak odczytu";
   $("tankWater").closest(".tank-vessel").classList.toggle("sensor-unknown", !waterFresh);
-  $("waterCm").textContent = isNum(water) ? fmt((pct * CFG.zbiornik.wysokoscCm) / 100, " cm", 1) : "— cm";
+  $("waterCm").textContent = fmt(waterFresh ? waterDepthCm(s.poziomWodyCm, s.poziomWodyMa) : null, " cm");
   const volume = waterVolumeM3(water);
   $("volume").textContent =
     volume === null ? "Objętość: brak aktualnego odczytu" : "≈ " + fmt(volume, " m³", 0) + " wody";
