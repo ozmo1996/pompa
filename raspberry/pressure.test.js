@@ -5,17 +5,24 @@ const pressure = require("./pressure");
 const { patchPressure } = require("./install-pressure");
 test("Ciśnienie V1: zero, środek i pełny zakres; błędny sygnał nie udaje ciśnienia", () => {
   for (const [raw, bar] of [
+    [47, 0],
+    [48, 0],
+    [49, 0],
     [50, 0],
+    [51, 0],
+    [52, 0.2],
     [250, 20],
     [370, 32],
     [450, 40],
   ]) {
     const r = pressure.pressureSample(raw, 1234);
     assert.equal(r.bar, bar);
+    assert.equal(r.blad, "");
+    assert.equal(r.polaczony, true);
     assert.equal(r.napiecieV, raw / 100);
     assert.equal(r.aktualizacja, 1234);
   }
-  for (const raw of [0, 49, 451, 65535, null, NaN, -1, 2.5]) assert.equal(pressure.pressureSample(raw).bar, null);
+  for (const raw of [0, 46, 451, 65535, null, NaN, -1, 2.5]) assert.equal(pressure.pressureSample(raw).bar, null);
   assert.equal(pressure.disconnectedPressure().polaczony, false);
   assert.equal(pressure.disconnectedPressure().bar, null);
 });
