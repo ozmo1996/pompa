@@ -42,7 +42,7 @@ after(async () => {
 });
 
 /** Otwiera aplikację z podanym stanem bazy. clockSkew — o ile zegar telefonu różni się od rzeczywistego. */
-async function open({ data, seed = {}, clockSkew = 0, sdkFails = false, clock = false } = {}) {
+async function open({ data, seed = {}, clockSkew = 0, sdkFails = false, clock = false, push = false } = {}) {
   const ctx = await browser.newContext({ locale: "pl-PL", timezoneId: "Europe/Warsaw", serviceWorkers: "block" });
   const page = await ctx.newPage();
   const errors = [];
@@ -52,6 +52,19 @@ async function open({ data, seed = {}, clockSkew = 0, sdkFails = false, clock = 
     sdkFails ? r.abort() : r.fulfill({ contentType: "text/javascript", body: MOCK }),
   );
   await page.addInitScript((s) => (globalThis.__FB_SEED = s), { data: data ?? seedData(Date.now()), ...seed });
+  if (push) {
+    await ctx.grantPermissions(["notifications"]);
+    await page.addInitScript(() => {
+      localStorage.setItem("pompaPushKey", "push-key");
+      Object.defineProperty(navigator.serviceWorker, "register", {
+        value: async () => ({
+          showNotification: async (title, options) => {
+            (globalThis.pushNotifications ??= []).push({ title, options });
+          },
+        }),
+      });
+    });
+  }
   await page.goto(base);
   return { page, ctx, errors };
 }
@@ -1840,5 +1853,34 @@ test("bez sieci: aplikacja otwiera się z pamięci service workera", async () =>
   await page.waitForSelector("#retryLoad:not([hidden])");
   assert.match(await page.textContent("#loginMessage"), /Sprawdź internet/);
   assert.equal(await page.isVisible(".brand"), true);
+  await ctx.close();
+});
+
+test("Push: przycisk wysyła test, a odbiór w otwartej aplikacji pokazuje powiadomienie systemowe", async () => {
+  const data = seedData();
+  data.pompa.tokeny = { "push-key": { token: "token", uid: "u1", czas: Date.now(), ostrzezenia: true } };
+  const { page, ctx, errors } = await open({ data, seed: { pushSupported: true }, push: true });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  await page.click("#alarmsTab");
+  await page.waitForSelector("#pushTest:not([hidden])");
+  await page.click("#pushTest");
+  await page.waitForFunction(() => globalThis.__fb.writes.some((w) => w.path === "pompa/testPowiadomienia"));
+  const request = await page.evaluate(() => globalThis.__fb.store.pompa.testPowiadomienia);
+  assert.equal(request.uid, "u1");
+  await page.evaluate(() =>
+    globalThis.__fb.receivePush({
+      data: { typ: "test", tytul: "Test powiadomień", tresc: "Odebrano test", poziom: "test" },
+    }),
+  );
+  await page.waitForFunction(() => globalThis.pushNotifications?.length === 1);
+  assert.equal(await page.textContent("#pushMsg"), "Test odebrany na tym urządzeniu.");
+  await page.evaluate(
+    (request) => globalThis.__fb.set("pompa/testPowiadomienia", { ...request, wynik: "Wysłano do 2 urządz." }),
+    request,
+  );
+  assert.equal(await page.textContent("#pushMsg"), "Test odebrany na tym urządzeniu.");
+  assert.equal(await page.isDisabled("#pushTest"), false);
+  assert.equal(await page.evaluate(() => globalThis.pushNotifications[0].title), "Test powiadomień");
+  assert.deepEqual(errors, []);
   await ctx.close();
 });

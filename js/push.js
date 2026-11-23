@@ -9,7 +9,8 @@ let msgApi = null,
   supported = null, // null — sprawdzanie, false — brak obsługi
   tokenRec = null,
   tokenUnsub = null,
-  testTimer = null;
+  testTimer = null,
+  lastTestReceivedAt = 0;
 
 const vapidOk = () => CFG.vapidKey.length > 60;
 const isStandalone = () => navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
@@ -50,14 +51,39 @@ export async function initMessaging(app) {
     const m = await import(`https://www.gstatic.com/firebasejs/${CFG.firebaseSdk}/firebase-messaging.js`);
     if (!(await m.isSupported())) return (supported = false);
     msgApi = { ...m, messaging: m.getMessaging(app) };
-    m.onMessage(msgApi.messaging, (p) => showToast(p.data));
+    m.onMessage(msgApi.messaging, (p) => {
+      receivePush(p.data).catch((e) => {
+        $("pushMsg").textContent = "Odebrano push, ale nie udało się wyświetlić powiadomienia: " + (e?.message || e);
+      });
+    });
     navigator.serviceWorker.addEventListener("message", (e) => e.data?.typ === "otworzAlarmy" && showView("alarms"));
     supported = true;
+    await refreshPushToken();
   } catch {
     supported = false;
   } finally {
     renderPush();
   }
+}
+
+async function receivePush(data) {
+  if (!data?.tytul) return;
+  showToast(data);
+  if (data.typ === "test") {
+    lastTestReceivedAt = now();
+    clearTimeout(testTimer);
+    $("pushTest").disabled = false;
+    $("pushMsg").textContent = "Test odebrany na tym urządzeniu.";
+  }
+  if (permission() !== "granted") return;
+  const registration = await registerSW();
+  await registration.showNotification(data.tytul, {
+    body: data.tresc || "",
+    tag: data.typ || "pompa",
+    icon: "icon-192.png",
+    badge: "icon-192.png",
+    data: { url: "./?tab=alarmy" },
+  });
 }
 
 export function watchToken() {
@@ -85,6 +111,7 @@ export function stopPush() {
   tokenUnsub = null;
   tokenRec = null;
   clearTimeout(testTimer);
+  lastTestReceivedAt = 0;
 }
 
 export function renderPush() {
@@ -181,7 +208,8 @@ export async function refreshPushToken() {
 
 async function sendTest() {
   const u = user();
-  if (!u) return;
+  if (!u || !S.connected) return;
+  lastTestReceivedAt = 0;
   $("pushTest").disabled = true;
   $("pushMsg").textContent = "Wysyłanie testu przez Raspberry…";
   clearTimeout(testTimer);
@@ -205,7 +233,8 @@ export function onTestResult(v) {
   if (!v || !u || v.uid !== u.uid || !v.wynik || now() - v.czas > 120000) return;
   clearTimeout(testTimer);
   $("pushTest").disabled = false;
-  $("pushMsg").textContent = String(v.wynik);
+  if (lastTestReceivedAt >= v.czas) return;
+  $("pushMsg").textContent = String(v.wynik) + " Potwierdzenie odbioru zobaczysz na urządzeniu, które otrzyma push.";
 }
 
 export function initPush() {

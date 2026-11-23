@@ -5,6 +5,7 @@ const M = (globalThis.__fb ??= (() => {
   const seed = globalThis.__FB_SEED || {};
   const fb = {
     store: structuredClone(seed.data || {}),
+    pushSupported: seed.pushSupported === true,
     user: seed.user === undefined ? { uid: "u1", email: "test@example.com" } : seed.user,
     connected: seed.connected ?? true,
     serverOffset: seed.serverOffset ?? 0,
@@ -141,8 +142,11 @@ export async function remove(r) {
   M.set(r.path, null);
 }
 // ---- firebase-messaging ----
-export const isSupported = async () => false;
+export const isSupported = async () => M.pushSupported === true;
 export const getMessaging = () => ({});
-export const onMessage = () => () => {};
+export const onMessage = (_messaging, callback) => {
+  M.receivePush = callback;
+  return () => {};
+};
 export const getToken = async () => "token";
 export const deleteToken = async () => true;
