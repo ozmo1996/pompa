@@ -1884,3 +1884,29 @@ test("Push: przycisk wysyła test, a odbiór w otwartej aplikacji pokazuje powia
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+test("Pogoda: osobne czasy obu grup i informacja o ograniczeniu API", async () => {
+  const data = seedData(),
+    t = Date.now();
+  Object.assign(data.pompa.status.pogoda, {
+    temperatura: -4,
+    wilgotnosc: 80,
+    pobranoTemperatura: t,
+    pobranoPozostale: t - 10 * 60000,
+    pobrano: t,
+  });
+  data.pompa.status.pogodaOdbior = {
+    blad: "Limit zapytań Weather Underground",
+    nastepnaProba: t + 30 * 60000,
+  };
+  const { page, ctx, errors } = await open({ data });
+  await page.waitForSelector("#dashboard:not([hidden])");
+  assert.match(await page.textContent("#summaryWeatherTemp"), /-4.*°C/);
+  assert.match(await page.textContent("#weatherPoll"), /co 3 min.*co 10 min/);
+  assert.equal(await page.isVisible("#weatherOtherTime"), true);
+  assert.match(await page.textContent("#weatherFetchState"), /Limit zapytań.*Ponowienie/);
+  await page.evaluate(() => globalThis.__fb.set("pompa/status/pogodaOdbior/blad", ""));
+  assert.equal(await page.isVisible("#weatherFetchState"), false);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

@@ -9,6 +9,7 @@ import {
   rowPower,
   waterVolumeM3,
   waterDepthCm,
+  weatherTime,
   wetBulb,
   stationPressure,
   counterReading,
@@ -366,9 +367,13 @@ const PARAMS = {
   },
 };
 
+function weatherParamTime(P, weather) {
+  return weatherTime(weather, !/pogoda\.(temperatura|wilgotnosc)/.test(P.pole));
+}
 function currentValue(P) {
   if (!S.connected || S.denied) return null;
-  if (P.g === "Pogoda" && !isFresh(S.status?.pogoda?.pobrano, now(), CFG.progi.swiezoscPogodyMs)) return null;
+  if (P.g === "Pogoda" && !isFresh(weatherParamTime(P, S.status?.pogoda), now(), CFG.progi.swiezoscPogodyMs))
+    return null;
   if (P.g === "Falownik" && (!isLive() || S.status?.polaczony !== true)) return null;
   if (
     P.g === "Zbiornik" &&
@@ -432,7 +437,7 @@ function syncPeriod() {
 }
 function timestamp(P) {
   if (P.timestamp) return P.timestamp(S.status);
-  if (P.g === "Pogoda") return S.status?.pogoda?.pobrano;
+  if (P.g === "Pogoda") return weatherParamTime(P, S.status?.pogoda);
   if (P.g === "Zbiornik")
     return P.pole === "temperaturaWody" ? S.status?.aktualizacjaTemperatury : S.status?.aktualizacjaPoziomu;
   return S.status?.aktualizacja;
@@ -467,7 +472,9 @@ function points(P) {
     if (v === undefined) continue;
     if (sessionKey && previousSession !== r[sessionKey]) segment++;
     if (sessionKey) previousSession = r[sessionKey];
-    if (isNum(v)) pts.push({ t: r.czas, v, segment });
+    const pointTime = P.g === "Pogoda" && isNum(r.pogoda.pobranoTemperatura) ? weatherParamTime(P, r.pogoda) : r.czas;
+    if (pointTime < from || pointTime > to || (pts.length && pointTime <= pts.at(-1).t)) continue;
+    if (isNum(v)) pts.push({ t: pointTime, v, segment });
     else segment++;
   }
   const t = Number(timestamp(P)),

@@ -287,6 +287,22 @@ function renderWeather() {
   $("summaryWeatherState").textContent = fresh
     ? (w?.stacja || CFG.pogoda.stacjaDomyslna) + " · " + new Date(t).toLocaleTimeString("pl-PL")
     : "Brak aktualnego pomiaru stacji";
+  const fetchState = S.status?.pogodaOdbior;
+  $("weatherPoll").textContent =
+    fetchState || isNum(w?.pobranoTemperatura)
+      ? "Temperatura i wilgotność co 3 min · pozostałe parametry co 10 min"
+      : "Pogoda: 10 min na postoju · 5 min w pracy · 30 s przy otwartej aplikacji";
+  $("weatherOtherTime").hidden = !isNum(w?.pobranoPozostale);
+  $("weatherOtherTime").textContent = isNum(w?.pobranoPozostale)
+    ? "Pozostałe parametry: " + new Date(w.pobranoPozostale).toLocaleString("pl-PL")
+    : "";
+  $("weatherFetchState").hidden = !fetchState?.blad;
+  $("weatherFetchState").textContent = fetchState?.blad
+    ? fetchState.blad +
+      (isNum(fetchState.nastepnaProba)
+        ? ". Ponowienie: " + new Date(fetchState.nastepnaProba).toLocaleString("pl-PL")
+        : "")
+    : "";
   $("weatherStation").textContent = w?.stacja || CFG.pogoda.stacjaDomyslna;
   $("weatherTime").textContent = isNum(t)
     ? "Pomiar: " + new Date(t).toLocaleString("pl-PL")

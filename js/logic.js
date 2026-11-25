@@ -72,7 +72,8 @@ export function windDirection(deg) {
 }
 
 /** Czas pomiaru pogody — Raspberry zapisuje `pobrano` albo `czasPomiaru`. */
-export const weatherTime = (w) => Number(w?.pobrano || w?.czasPomiaru);
+export const weatherTime = (w, other = false) =>
+  Number((other ? w?.pobranoPozostale : w?.pobranoTemperatura) || w?.pobrano || w?.czasPomiaru);
 
 // ---------- falownik i moc ----------
 
