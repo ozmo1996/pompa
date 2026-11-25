@@ -1,6 +1,6 @@
 "use strict";
 const { estimatePump } = require("./pump-estimate");
-const METHOD = "65ysm8-photo-v1";
+const METHOD = "65ysm8-photo-v2";
 class FlowCounter {
   constructor(db, inletBar = 0) {
     if (!Number.isFinite(inletBar) || inletBar < -1 || inletBar > 10) throw new Error("Nieprawidłowe ciśnienie ssania");

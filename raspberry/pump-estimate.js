@@ -20,6 +20,24 @@
       [58, 292, 70],
     ].map(Object.freeze),
   );
+  function estimateFromHead(measured, ratio, power50) {
+    const head50 = measured / ratio ** 2;
+    // Poniżej wysokości przy Q=0 krzywa H–Q ma tylko jedno przecięcie.
+    if (head50 >= PUMP_CURVE[0][1] || head50 < PUMP_CURVE.at(-1)[1]) return null;
+    const i = PUMP_CURVE.findIndex((point, index) => index >= 4 && point[1] <= head50);
+    if (i < 1) return null;
+    const a = PUMP_CURVE[i - 1],
+      b = PUMP_CURVE[i],
+      fraction = (a[1] - head50) / (a[1] - b[1]),
+      expectedPower = a[2] + fraction * (b[2] - a[2]);
+    if (Math.abs(power50 - expectedPower) / expectedPower > 0.2) return null;
+    return {
+      q: (a[0] + fraction * (b[0] - a[0])) * ratio,
+      rpm: 2960 * ratio,
+      head: measured,
+      reason: "Szacunek z jednoznacznej krzywej H–Q i Hz; moc potwierdza zgodność (tolerancja 20%, nie dokładność przepływu)",
+    };
+  }
   function estimatePump(s, time, inletBar = 0) {
     const no = (reason) => ({ q: null, reason });
     if (!s?.polaczony || !isFresh(s.aktualizacja, time, 15000)) return no("Brak świeżych danych falownika");
@@ -44,20 +62,24 @@
     )
       return no("Wymagane aktualne ciśnienie i różnica tłoczenie–ssanie co najmniej 1 bar");
     const r = hz / 50,
-      p50 = (kw * 0.947) / r ** 3;
+      p50 = (kw * 0.947) / r ** 3,
+      measured = ((p.bar - inletBar) * 100000) / (1000 * 9.80665);
     // Nie ekstrapolujemy krzywej, nie mylimy 90 kW znamionowych silnika z poborem pompy.
     if (p50 < PUMP_CURVE[0][2] || p50 > PUMP_CURVE.at(-1)[2])
-      return no("Moc po przeliczeniu na 50 Hz jest poza zakresem dostarczonego wykresu");
+      return (
+        estimateFromHead(measured, r, p50) ||
+        no("Moc i ciśnienie po przeliczeniu na 50 Hz nie pozwalają oszacować przepływu z wykresu")
+      );
     const i = PUMP_CURVE.findIndex((v) => v[2] >= p50),
       b = PUMP_CURVE[Math.max(1, i)],
       a = PUMP_CURVE[Math.max(1, i) - 1];
     const x = (p50 - a[2]) / (b[2] - a[2]),
       q50 = a[0] + x * (b[0] - a[0]);
-    const head = (a[1] + x * (b[1] - a[1])) * r ** 2,
-      measured = ((p.bar - inletBar) * 100000) / (1000 * 9.80665);
+    const head = (a[1] + x * (b[1] - a[1])) * r ** 2;
     if (Math.abs(head - measured) / head > 0.2)
-      return no(
-        "Ciśnienie i moc nie zgadzają się z charakterystyką (różnica H ponad 20%). Sprawdź ciśnienie na ssaniu i pomiary",
+      return (
+        estimateFromHead(measured, r, p50) ||
+        no("Ciśnienie i moc nie zgadzają się z charakterystyką. Sprawdź ciśnienie na ssaniu i pomiary")
       );
     return {
       q: q50 * r,

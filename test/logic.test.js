@@ -340,3 +340,41 @@ test("alarmy: filtr i potwierdzanie", () => {
     [2],
   );
 });
+
+test("Przepływ: H–Q uzupełnia moc poza wykresem tylko przy jednoznacznym punkcie i zgodnej mocy", () => {
+  const t = Date.now();
+  const sample = {
+    polaczony: true,
+    pracuje: true,
+    aktualizacja: t,
+    czestotliwoscWyjsciowa: 45,
+    moc: 57.5,
+    cisnienieTloczenia: { polaczony: true, aktualizacja: t, bar: 24.5 },
+  };
+  const estimate = estimatePump(sample, t, 1);
+  assert.ok(estimate.q > 49 && estimate.q < 53);
+  assert.match(estimate.reason, /H–Q/);
+  assert.equal(estimatePump({ ...sample, moc: 100 }, t, 1).q, null);
+  assert.equal(
+    estimatePump(
+      {
+        ...sample,
+        cisnienieTloczenia: { ...sample.cisnienieTloczenia, bar: 31 },
+      },
+      t,
+      1,
+    ).q,
+    null,
+  );
+  assert.equal(
+    estimatePump(
+      {
+        ...sample,
+        cisnienieTloczenia: { ...sample.cisnienieTloczenia, bar: 20 },
+      },
+      t,
+      1,
+    ).q,
+    null,
+  );
+});
